@@ -2,10 +2,10 @@ import { zValidator } from "@hono/zod-validator";
 import { Plan } from "@crossval/db/models/plan.model";
 import { Hono } from "hono";
 
+import { amountToCents } from "@/server/money";
 import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
 
 import { planInputSchema } from "./schema";
-import { amountToCents } from "./utils";
 
 const plansRouter = new Hono<{ Variables: AuthVariables }>();
 
