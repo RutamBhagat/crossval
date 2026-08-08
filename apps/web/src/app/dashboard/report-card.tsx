@@ -45,7 +45,7 @@ export function ReportCard() {
   const isLoading = plansAreLoading || actualsAreLoading;
 
   return (
-    <Card className="shadow-xs lg:col-span-2">
+    <Card className="scroll-mt-20 shadow-xs lg:col-span-2" id="variance-report">
       <CardHeader className="border-b">
         <CardTitle>Variance report</CardTitle>
         <CardDescription>

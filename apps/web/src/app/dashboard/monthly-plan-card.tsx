@@ -33,7 +33,7 @@ export function MonthlyPlanCard() {
   const { plans, isLoading, isSaving, savePlan } = usePlans();
 
   return (
-    <Card className="shadow-xs">
+    <Card className="scroll-mt-20 shadow-xs" id="monthly-plan">
       <CardHeader className="border-b">
         <CardTitle>Set a monthly plan</CardTitle>
         <CardDescription>Choose a category, month, and target amount.</CardDescription>

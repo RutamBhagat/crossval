@@ -34,7 +34,7 @@ export function MonthlyActualCard() {
   const { actuals, isLoading, isSaving, createActual } = useActuals();
 
   return (
-    <Card className="shadow-xs">
+    <Card className="scroll-mt-20 shadow-xs" id="actual-spend">
       <CardHeader className="border-b">
         <CardTitle>Log actual spend</CardTitle>
         <CardDescription>Record what was spent for a category and month.</CardDescription>
