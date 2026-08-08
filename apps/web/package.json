@@ -13,6 +13,7 @@
     "@crossval/db": "workspace:*",
     "@crossval/env": "workspace:*",
     "@crossval/ui": "workspace:*",
+    "@hono/zod-validator": "^0.9.0",
     "@swc/helpers": "^0.5.23",
     "@tanstack/react-form": "^1.33.2",
     "babel-plugin-react-compiler": "^1.0.0",
