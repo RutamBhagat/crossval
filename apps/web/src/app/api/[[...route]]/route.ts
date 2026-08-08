@@ -1,10 +1,15 @@
+import { auth } from "@crossval/auth";
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 import { handle } from "hono/vercel";
 
 const app = new Hono().basePath("/api");
 
+app.use(logger());
+app.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw));
+
 app.get("/", (c) => {
-  return c.json({ message: "Hello from Hono!" });
+  return c.text("OK");
 });
 
 export const DELETE = handle(app);

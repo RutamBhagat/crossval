@@ -27,7 +27,7 @@ pnpm install
 This project uses MongoDB with Mongoose.
 
 1. Make sure you have MongoDB set up.
-2. Update your `apps/server/.env` file with your MongoDB connection URI.
+2. Update your `apps/web/.env` file with your MongoDB connection URI.
 
 Then, run the development server:
 
@@ -35,8 +35,8 @@ Then, run the development server:
 pnpm run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) in your browser. The API is
+available under [http://localhost:3000/api](http://localhost:3000/api).
 
 ## UI Customization
 
@@ -69,8 +69,7 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 ```
 crossval/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   └── server/      # Backend API (Hono)
+│   └── web/         # Next.js application and Hono API
 ├── packages/
 │   ├── ui/          # Shared shadcn/ui components and styles
 │   ├── auth/        # Authentication configuration & logic
@@ -81,6 +80,5 @@ crossval/
 
 - `pnpm run dev`: Start all applications in development mode
 - `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
-- `pnpm run dev:server`: Start only the server
+- `pnpm run dev:web`: Start the web application
 - `pnpm run check-types`: Check TypeScript types across all apps
