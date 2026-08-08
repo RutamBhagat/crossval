@@ -3,10 +3,13 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { handle } from "hono/vercel";
 
+import { plansRouter } from "@/server/routers/plans";
+
 const app = new Hono().basePath("/api");
 
 app.use(logger());
 app.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw));
+app.route("/plans", plansRouter);
 
 app.get("/", (c) => {
   return c.text("OK");
