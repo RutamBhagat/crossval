@@ -1,0 +1,25 @@
+{
+  "name": "@crossval/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@crossval/db": "workspace:*",
+    "@crossval/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "mongodb": "^7.5.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@crossval/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

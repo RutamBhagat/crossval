@@ -1,0 +1,28 @@
+{
+  "name": "@crossval/db",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "db:start": "docker compose up -d",
+    "db:watch": "docker compose up",
+    "db:stop": "docker compose stop",
+    "db:down": "docker compose down"
+  },
+  "dependencies": {
+    "@crossval/env": "workspace:*",
+    "dotenv": "catalog:",
+    "mongoose": "^9.8.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@crossval/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

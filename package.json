@@ -1,0 +1,31 @@
+{
+  "name": "crossval",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "check-types": "pnpm -r check-types",
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server dev",
+    "db:start": "pnpm --filter @crossval/db db:start",
+    "db:watch": "pnpm --filter @crossval/db db:watch",
+    "db:stop": "pnpm --filter @crossval/db db:stop",
+    "db:down": "pnpm --filter @crossval/db db:down"
+  },
+  "dependencies": {
+    "@crossval/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@crossval/config": "workspace:*",
+    "@types/node": "^22.20.1",
+    "typescript": "catalog:"
+  },
+  "packageManager": "pnpm@11.12.0"
+}

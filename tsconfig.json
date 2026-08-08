@@ -1,0 +1,3 @@
+{
+  "extends": "@crossval/config/tsconfig.base.json"
+}
