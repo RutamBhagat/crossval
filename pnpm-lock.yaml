@@ -24,6 +24,9 @@ catalogs:
     lucide-react:
       specifier: ^1.27.0
       version: 1.29.0
+    next-themes:
+      specifier: ^0.4.6
+      version: 0.4.6
     react:
       specifier: ^19.2.8
       version: 19.2.8
@@ -72,6 +75,9 @@ importers:
       '@crossval/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@crossval/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@crossval/env':
         specifier: workspace:*
         version: link:../../packages/env

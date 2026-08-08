@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@crossval/auth": "workspace:*",
+    "@crossval/db": "workspace:*",
     "@crossval/env": "workspace:*",
     "@crossval/ui": "workspace:*",
     "@swc/helpers": "^0.5.23",
