@@ -16,6 +16,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
+    "hono": "^4.12.32",
     "lucide-react": "catalog:",
     "next": "^16.2.12",
     "next-themes": "catalog:",
