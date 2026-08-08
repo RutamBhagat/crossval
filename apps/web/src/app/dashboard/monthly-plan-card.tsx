@@ -19,24 +19,11 @@ import {
 } from "@crossval/ui/components/select";
 import { Loader2 } from "lucide-react";
 
-import { categories } from "@/lib/categories";
+import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
+import { formatCurrency } from "@/lib/formatters";
 
 import { MonthPicker } from "./month-picker";
 import { usePlans } from "./use-plans";
-
-const categoryItems = categories.map((category) => ({
-  label: category.name,
-  value: category.id,
-}));
-
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-
-function categoryName(categoryId: string) {
-  return categories.find((category) => category.id === categoryId)?.name ?? categoryId;
-}
 
 export function MonthlyPlanCard() {
   const { plans, isLoading, isSaving, savePlan } = usePlans();
@@ -65,7 +52,7 @@ export function MonthlyPlanCard() {
               <FieldLabel htmlFor="plan-category">Category</FieldLabel>
               <Select
                 defaultValue={categories[0]?.id}
-                items={categoryItems}
+                items={categoryOptions}
                 name="categoryId"
                 required
               >
@@ -121,11 +108,11 @@ export function MonthlyPlanCard() {
                   key={plan.id}
                 >
                   <div>
-                    <p className="font-medium">{categoryName(plan.categoryId)}</p>
+                    <p className="font-medium">{getCategoryName(plan.categoryId)}</p>
                     <p className="text-muted-foreground text-sm">{plan.month}</p>
                   </div>
                   <span className="font-mono font-medium">
-                    {currencyFormatter.format(plan.amountCents / 100)}
+                    {formatCurrency(plan.amountCents)}
                   </span>
                 </li>
               ))}

@@ -20,24 +20,11 @@ import {
 import { Textarea } from "@crossval/ui/components/textarea";
 import { Loader2 } from "lucide-react";
 
-import { categories } from "@/lib/categories";
+import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
+import { formatCurrency } from "@/lib/formatters";
 
 import { MonthPicker } from "./month-picker";
 import { useActuals } from "./use-actuals";
-
-const categoryItems = categories.map((category) => ({
-  label: category.name,
-  value: category.id,
-}));
-
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-
-function categoryName(categoryId: string) {
-  return categories.find((category) => category.id === categoryId)?.name ?? categoryId;
-}
 
 export function MonthlyActualCard() {
   const { actuals, isLoading, isSaving, createActual } = useActuals();
@@ -68,7 +55,7 @@ export function MonthlyActualCard() {
               <FieldLabel htmlFor="actual-category">Category</FieldLabel>
               <Select
                 defaultValue={categories[0]?.id}
-                items={categoryItems}
+                items={categoryOptions}
                 name="categoryId"
                 required
               >
@@ -130,14 +117,14 @@ export function MonthlyActualCard() {
               {actuals.map((actual) => (
                 <li className="flex items-start justify-between gap-4 py-3" key={actual.id}>
                   <div>
-                    <p className="font-medium">{categoryName(actual.categoryId)}</p>
+                    <p className="font-medium">{getCategoryName(actual.categoryId)}</p>
                     <p className="text-muted-foreground text-sm">{actual.month}</p>
                     {actual.note && (
                       <p className="text-muted-foreground mt-1 text-sm">{actual.note}</p>
                     )}
                   </div>
                   <span className="font-mono font-medium">
-                    {currencyFormatter.format(actual.amountCents / 100)}
+                    {formatCurrency(actual.amountCents)}
                   </span>
                 </li>
               ))}

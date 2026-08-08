@@ -4,4 +4,13 @@ export const categories = [
   { id: "tools", name: "Tools", code: "TLS" },
 ] as const;
 
+export const categoryOptions = categories.map((category) => ({
+  label: category.name,
+  value: category.id,
+}));
+
+export function getCategoryName(categoryId: string) {
+  return categories.find((category) => category.id === categoryId)?.name ?? categoryId;
+}
+
 export type CategoryId = (typeof categories)[number]["id"];
