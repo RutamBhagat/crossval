@@ -1,4 +1,11 @@
 import { Button } from "@crossval/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@crossval/ui/components/card";
 import { Input } from "@crossval/ui/components/input";
 import { Label } from "@crossval/ui/components/label";
 import { useForm } from "@tanstack/react-form";
@@ -49,17 +56,20 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
   }
 
   return (
-    <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
-      >
+    <Card className="w-full shadow-xs">
+      <CardHeader className="border-b">
+        <CardTitle>Welcome back</CardTitle>
+        <CardDescription>Sign in to continue to your planning workspace.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="space-y-4"
+        >
         <div>
           <form.Field name="email">
             {(field) => (
@@ -74,7 +84,11 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
                 {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
+                  <p
+                    key={error?.message}
+                    className="text-xs text-destructive"
+                    role="alert"
+                  >
                     {error?.message}
                   </p>
                 ))}
@@ -97,7 +111,11 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
                 {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
+                  <p
+                    key={error?.message}
+                    className="text-xs text-destructive"
+                    role="alert"
+                  >
                     {error?.message}
                   </p>
                 ))}
@@ -111,21 +129,18 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         >
           {({ canSubmit, isSubmitting }) => (
             <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Sign In"}
+              {isSubmitting ? "Signing in…" : "Sign in"}
             </Button>
           )}
         </form.Subscribe>
-      </form>
+        </form>
 
-      <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignUp}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Need an account? Sign Up
-        </Button>
-      </div>
-    </div>
+        <div className="mt-4 text-center">
+          <Button variant="link" onClick={onSwitchToSignUp}>
+            Need an account? Create one
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

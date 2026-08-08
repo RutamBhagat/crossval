@@ -1,8 +1,10 @@
 "use client";
 
+import { Badge } from "@crossval/ui/components/badge";
 import { Button } from "@crossval/ui/components/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -17,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@crossval/ui/components/select";
+import { Separator } from "@crossval/ui/components/separator";
+import { Skeleton } from "@crossval/ui/components/skeleton";
 import { Textarea } from "@crossval/ui/components/textarea";
 import { Loader2 } from "lucide-react";
 
@@ -30,12 +34,15 @@ export function MonthlyActualCard() {
   const { actuals, isLoading, isSaving, createActual } = useActuals();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Actual spend</CardTitle>
-        <CardDescription>Log one spend entry for a category and month.</CardDescription>
+    <Card className="shadow-xs">
+      <CardHeader className="border-b">
+        <CardTitle>Log actual spend</CardTitle>
+        <CardDescription>Record what was spent for a category and month.</CardDescription>
+        <CardAction>
+          <Badge variant="outline">Actual</Badge>
+        </CardAction>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -50,7 +57,7 @@ export function MonthlyActualCard() {
             });
           }}
         >
-          <FieldGroup>
+          <FieldGroup className="gap-4">
             <Field>
               <FieldLabel htmlFor="actual-category">Category</FieldLabel>
               <Select
@@ -99,38 +106,49 @@ export function MonthlyActualCard() {
                 placeholder="Campaign spend"
               />
             </Field>
-            <Button disabled={isSaving} type="submit">
+            <Button className="w-full sm:w-fit" disabled={isSaving} type="submit">
               {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
               Log actual
             </Button>
           </FieldGroup>
         </form>
 
-        <div className="border-t pt-5">
-          <h3 className="mb-3 text-sm font-medium">Logged actuals</h3>
+        <Separator />
+        <section aria-labelledby="logged-actuals-heading">
+          <div className="mb-2 flex items-center justify-between gap-4">
+            <h3 id="logged-actuals-heading" className="text-xs font-medium">
+              Logged actuals
+            </h3>
+            <span className="font-mono text-xs text-muted-foreground">{actuals.length}</span>
+          </div>
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading actuals…</p>
+            <div className="space-y-2" aria-label="Loading actuals">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-4/5" />
+            </div>
           ) : actuals.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No actual spend logged yet.</p>
+            <p className="py-3 text-xs text-muted-foreground">No actual spend logged yet.</p>
           ) : (
             <ul className="divide-y" aria-label="Logged actual spend">
               {actuals.map((actual) => (
                 <li className="flex items-start justify-between gap-4 py-3" key={actual.id}>
                   <div>
-                    <p className="font-medium">{getCategoryName(actual.categoryId)}</p>
-                    <p className="text-muted-foreground text-sm">{actual.month}</p>
+                    <p className="text-xs font-medium">{getCategoryName(actual.categoryId)}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{actual.month}</p>
                     {actual.note && (
-                      <p className="text-muted-foreground mt-1 text-sm">{actual.note}</p>
+                      <p className="mt-1 max-w-64 truncate text-xs text-muted-foreground">
+                        {actual.note}
+                      </p>
                     )}
                   </div>
-                  <span className="font-mono font-medium">
+                  <span className="font-mono text-xs font-medium tabular-nums">
                     {formatCurrency(actual.amountCents)}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </section>
       </CardContent>
     </Card>
   );

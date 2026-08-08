@@ -1,8 +1,10 @@
 "use client";
 
+import { Badge } from "@crossval/ui/components/badge";
 import { Button } from "@crossval/ui/components/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -17,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@crossval/ui/components/select";
+import { Separator } from "@crossval/ui/components/separator";
+import { Skeleton } from "@crossval/ui/components/skeleton";
 import { Loader2 } from "lucide-react";
 
 import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
@@ -29,12 +33,15 @@ export function MonthlyPlanCard() {
   const { plans, isLoading, isSaving, savePlan } = usePlans();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Monthly plan</CardTitle>
-        <CardDescription>Set a spending target for one category and month.</CardDescription>
+    <Card className="shadow-xs">
+      <CardHeader className="border-b">
+        <CardTitle>Set a monthly plan</CardTitle>
+        <CardDescription>Choose a category, month, and target amount.</CardDescription>
+        <CardAction>
+          <Badge variant="outline">Plan</Badge>
+        </CardAction>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -47,7 +54,7 @@ export function MonthlyPlanCard() {
             });
           }}
         >
-          <FieldGroup>
+          <FieldGroup className="gap-4">
             <Field>
               <FieldLabel htmlFor="plan-category">Category</FieldLabel>
               <Select
@@ -87,19 +94,28 @@ export function MonthlyPlanCard() {
                 />
               </Field>
             </div>
-            <Button disabled={isSaving} type="submit">
+            <Button className="w-full sm:w-fit" disabled={isSaving} type="submit">
               {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
               Save target
             </Button>
           </FieldGroup>
         </form>
 
-        <div className="border-t pt-5">
-          <h3 className="mb-3 text-sm font-medium">Saved targets</h3>
+        <Separator />
+        <section aria-labelledby="saved-targets-heading">
+          <div className="mb-2 flex items-center justify-between gap-4">
+            <h3 id="saved-targets-heading" className="text-xs font-medium">
+              Saved targets
+            </h3>
+            <span className="font-mono text-xs text-muted-foreground">{plans.length}</span>
+          </div>
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading targets…</p>
+            <div className="space-y-2" aria-label="Loading targets">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-4/5" />
+            </div>
           ) : plans.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No monthly targets yet.</p>
+            <p className="py-3 text-xs text-muted-foreground">No monthly targets yet.</p>
           ) : (
             <ul className="divide-y" aria-label="Saved monthly targets">
               {plans.map((plan) => (
@@ -108,17 +124,17 @@ export function MonthlyPlanCard() {
                   key={plan.id}
                 >
                   <div>
-                    <p className="font-medium">{getCategoryName(plan.categoryId)}</p>
-                    <p className="text-muted-foreground text-sm">{plan.month}</p>
+                    <p className="text-xs font-medium">{getCategoryName(plan.categoryId)}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{plan.month}</p>
                   </div>
-                  <span className="font-mono font-medium">
+                  <span className="font-mono text-xs font-medium tabular-nums">
                     {formatCurrency(plan.amountCents)}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </section>
       </CardContent>
     </Card>
   );

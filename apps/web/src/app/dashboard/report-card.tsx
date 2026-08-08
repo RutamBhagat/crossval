@@ -1,7 +1,9 @@
 "use client";
 
+import { Badge } from "@crossval/ui/components/badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -11,8 +13,10 @@ import {
   Empty,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@crossval/ui/components/empty";
+import { Skeleton } from "@crossval/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -21,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@crossval/ui/components/table";
+import { ChartNoAxesColumnIncreasing } from "lucide-react";
 
 import { getCategoryName } from "@/lib/categories";
 import {
@@ -40,19 +45,29 @@ export function ReportCard() {
   const isLoading = plansAreLoading || actualsAreLoading;
 
   return (
-    <Card className="lg:col-span-2">
-      <CardHeader>
-        <CardTitle>Plan vs actual</CardTitle>
+    <Card className="shadow-xs lg:col-span-2">
+      <CardHeader className="border-b">
+        <CardTitle>Variance report</CardTitle>
         <CardDescription>
-          Compare targets with logged spend for the same category and month.
+          Plan and actual spend matched by category and month.
         </CardDescription>
+        <CardAction>
+          <Badge variant="secondary">{rows.length} rows</Badge>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading report…</p>
+          <div className="space-y-2" aria-label="Loading report">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-3/4" />
+          </div>
         ) : rows.length === 0 ? (
-          <Empty>
+          <Empty className="border">
             <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ChartNoAxesColumnIncreasing />
+              </EmptyMedia>
               <EmptyTitle>No report rows yet</EmptyTitle>
               <EmptyDescription>
                 Save a target and log actual spend for the same category and month.
@@ -77,17 +92,19 @@ export function ReportCard() {
                   <TableCell className="font-medium">
                     {getCategoryName(row.categoryId)}
                   </TableCell>
-                  <TableCell>{row.month}</TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="font-mono text-muted-foreground">
+                    {row.month}
+                  </TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">
                     {formatCurrency(row.planCents)}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono tabular-nums">
                     {formatCurrency(row.actualCents)}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono font-medium tabular-nums">
                     {formatSignedCurrency(row.varianceCents)}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono tabular-nums">
                     {formatSignedPercent(row.variancePercent)}
                   </TableCell>
                 </TableRow>

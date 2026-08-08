@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@crossval/ui/components/dropdown-menu";
 import { Skeleton } from "@crossval/ui/components/skeleton";
+import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -19,40 +20,45 @@ export default function UserMenu() {
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending) {
-    return <Skeleton className="h-9 w-24" />;
+    return <Skeleton className="h-8 w-28" />;
   }
 
   if (!session) {
     return (
-      <Link href="/login">
-        <Button variant="outline">Sign In</Button>
-      </Link>
+      <Button render={<Link href="/login" />} variant="outline">
+        Sign in
+      </Button>
     );
   }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {session.user.name}
+      <DropdownMenuTrigger render={<Button variant="ghost" />}>
+        <UserRound data-icon="inline-start" />
+        <span className="max-w-32 truncate">{session.user.name}</span>
+        <ChevronDown data-icon="inline-end" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-card">
+      <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel className="space-y-0.5">
+            <span className="block font-medium text-foreground">{session.user.name}</span>
+            <span className="block max-w-52 truncate">{session.user.email}</span>
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {
               authClient.signOut({
                 fetchOptions: {
                   onSuccess: () => {
-                    router.push("/");
+                    router.push("/login");
                   },
                 },
               });
             }}
           >
-            Sign Out
+            <LogOut />
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
