@@ -30,12 +30,13 @@ import { Skeleton } from "@crossval/ui/components/skeleton";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
+import { getCategoryName } from "@/lib/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";
 import { MonthPicker } from "./month-picker";
 import { useActuals } from "./use-actuals";
+import { useCategories } from "./use-categories";
 import { useLocks } from "./use-locks";
 
 type ActualEntry = {
@@ -83,6 +84,11 @@ function groupActuals(actuals: ActualEntry[]) {
 
 export function MonthlyActualCard() {
   const [month, setMonth] = useState(currentMonth);
+  const { categories } = useCategories();
+  const categoryOptions = categories.map((category) => ({
+    label: category.name,
+    value: category.id,
+  }));
   const { actuals, isLoading, isSaving, createActual } = useActuals();
   const { locks, isLoading: locksAreLoading } = useLocks();
   const actualGroups = groupActuals(actuals);

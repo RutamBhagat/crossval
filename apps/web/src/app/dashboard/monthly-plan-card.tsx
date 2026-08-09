@@ -25,12 +25,13 @@ import { Skeleton } from "@crossval/ui/components/skeleton";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
+import { getCategoryName } from "@/lib/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";
 import { MonthPicker } from "./month-picker";
 import { useLocks } from "./use-locks";
+import { useCategories } from "./use-categories";
 import { usePlans } from "./use-plans";
 
 function currentMonth() {
@@ -40,6 +41,11 @@ function currentMonth() {
 
 export function MonthlyPlanCard() {
   const [month, setMonth] = useState(currentMonth);
+  const { categories } = useCategories();
+  const categoryOptions = categories.map((category) => ({
+    label: category.name,
+    value: category.id,
+  }));
   const { plans, isLoading, isSaving, savePlan } = usePlans();
   const { locks, isLoading: locksAreLoading } = useLocks();
   const monthIsLocked = locks.some((lock) => lock.month === month);
