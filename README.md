@@ -16,8 +16,12 @@ https://crossval-web-five.vercel.app/
 
 Production stack:
 
-- Vercel: Next.js application
+- Vercel: Next.js frontend and backend
 - MongoDB Atlas: production database
+
+### Why Vercel instead of EC2
+
+I chose Vercel because the frontend and backend are one Next.js application. The expected workload does not justify the cost of managing an EC2 instance. Vercel handles deployment and scaling. MongoDB Atlas supports the database transactions that the application requires.
 
 The Docker Compose MongoDB configuration is only for local development.
 
@@ -174,6 +178,7 @@ $ vitest run
  ✓ tests/actual-import.test.ts (10 tests) 28ms
  ✓ tests/lock-enforcement.test.ts (5 tests) 27ms
  ✓ tests/api-access.test.ts (4 tests) 17ms
+
  ✓ tests/report.integration.test.ts (1 test) 732ms
      ✓ calculates report rows in MongoDB without leaking another user's data  447ms
 
@@ -190,15 +195,6 @@ $ vitest run --config vitest.integration.config.mts
 
  RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/packages/db
 
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
-(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
  ✓ tests/period-state.integration.test.ts (4 tests) 285ms
    ✓ period-state transaction integration (4)
      ✓ rolls back the guard and does not write when one period is locked 28ms
