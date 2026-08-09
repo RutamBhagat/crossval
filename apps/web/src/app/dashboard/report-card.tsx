@@ -16,6 +16,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@crossval/ui/components/empty";
+import { Field, FieldLabel } from "@crossval/ui/components/field";
 import { Skeleton } from "@crossval/ui/components/skeleton";
 import {
   Table,
@@ -26,6 +27,7 @@ import {
   TableRow,
 } from "@crossval/ui/components/table";
 import { ChartNoAxesColumnIncreasing } from "lucide-react";
+import { useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
 import {
@@ -34,14 +36,24 @@ import {
   formatSignedPercent,
 } from "@/lib/formatters";
 
-import { buildReportRows } from "./report";
+import { MonthPicker } from "./month-picker";
+import { buildReportRows, filterReportRows } from "./report";
 import { useActuals } from "./use-actuals";
 import { usePlans } from "./use-plans";
 
 export function ReportCard() {
   const { plans, isLoading: plansAreLoading } = usePlans();
   const { actuals, isLoading: actualsAreLoading } = useActuals();
-  const rows = buildReportRows(plans, actuals);
+  const [range, setRange] = useState<{ start?: string; end?: string }>({});
+  const allRows = buildReportRows(plans, actuals);
+  const availableMonths = Array.from(new Set(allRows.map((row) => row.month))).sort();
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const defaultStart = availableMonths[0] ?? currentMonth;
+  const defaultEnd = availableMonths.at(-1) ?? currentMonth;
+  const startMonth = range.start ?? defaultStart;
+  const endMonth = range.end ?? defaultEnd;
+  const rows = filterReportRows(allRows, startMonth, endMonth);
   const isLoading = plansAreLoading || actualsAreLoading;
 
   return (
@@ -55,7 +67,38 @@ export function ReportCard() {
           <Badge variant="secondary">{rows.length} rows</Badge>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-6">
+        <section aria-label="Report date range" className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="report-start-month">Start month</FieldLabel>
+            <MonthPicker
+              id="report-start-month"
+              name="startMonth"
+              onValueChange={(start) =>
+                setRange((current) => ({
+                  start,
+                  end: (current.end ?? defaultEnd) < start ? start : current.end,
+                }))
+              }
+              value={startMonth}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="report-end-month">End month</FieldLabel>
+            <MonthPicker
+              id="report-end-month"
+              name="endMonth"
+              onValueChange={(end) =>
+                setRange((current) => ({
+                  start: (current.start ?? defaultStart) > end ? end : current.start,
+                  end,
+                }))
+              }
+              value={endMonth}
+            />
+          </Field>
+        </section>
+
         {isLoading ? (
           <div className="flex flex-col gap-2" aria-label="Loading report">
             <Skeleton className="h-8 w-full" />
@@ -68,9 +111,13 @@ export function ReportCard() {
               <EmptyMedia variant="icon">
                 <ChartNoAxesColumnIncreasing />
               </EmptyMedia>
-              <EmptyTitle>No report rows yet</EmptyTitle>
+              <EmptyTitle>
+                {allRows.length === 0 ? "No report rows yet" : "No rows in this date range"}
+              </EmptyTitle>
               <EmptyDescription>
-                Save a target and log actual spend for the same category and month.
+                {allRows.length === 0
+                  ? "Save a target and log actual spend for the same category and month."
+                  : "Select a range that includes months with plan and actual data."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

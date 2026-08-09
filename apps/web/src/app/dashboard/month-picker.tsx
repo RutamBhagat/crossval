@@ -18,21 +18,41 @@ function currentMonth() {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function MonthPicker({ id, name }: { id: string; name: string }) {
-  const [value, setValue] = useState(currentMonth);
-  const [year, setYear] = useState(() => new Date().getFullYear());
+type MonthPickerProps = {
+  id: string;
+  name: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+};
+
+export function MonthPicker({ id, name, value, onValueChange }: MonthPickerProps) {
+  const [internalValue, setInternalValue] = useState(currentMonth);
+  const selectedValue = value ?? internalValue;
+  const selectedYear = Number(selectedValue.slice(0, 4));
+  const selectedMonth = Number(selectedValue.slice(5, 7)) - 1;
+  const [year, setYear] = useState(selectedYear);
   const [open, setOpen] = useState(false);
-  const selectedYear = Number(value.slice(0, 4));
-  const selectedMonth = Number(value.slice(5, 7)) - 1;
 
   function selectMonth(month: number) {
-    setValue(`${year}-${String(month + 1).padStart(2, "0")}`);
+    const nextValue = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+    if (value === undefined) {
+      setInternalValue(nextValue);
+    }
+
+    onValueChange?.(nextValue);
     setOpen(false);
   }
 
   return (
-    <Popover onOpenChange={setOpen} open={open}>
-      <input name={name} type="hidden" value={value} />
+    <Popover
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) setYear(selectedYear);
+      }}
+      open={open}
+    >
+      <input name={name} type="hidden" value={selectedValue} />
       <PopoverTrigger
         render={
           <Button

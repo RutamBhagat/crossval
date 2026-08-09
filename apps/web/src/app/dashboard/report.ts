@@ -13,6 +13,10 @@ type ReportRow = {
   variancePercent: number | null;
 };
 
+function filterReportRows(rows: ReportRow[], startMonth: string, endMonth: string) {
+  return rows.filter((row) => row.month >= startMonth && row.month <= endMonth);
+}
+
 function buildReportRows(plans: MonthlyAmount[], actuals: MonthlyAmount[]): ReportRow[] {
   return plans.flatMap((plan) => {
     const matchingActuals = actuals.filter(
@@ -46,5 +50,5 @@ function buildReportRows(plans: MonthlyAmount[], actuals: MonthlyAmount[]): Repo
   });
 }
 
-export { buildReportRows };
+export { buildReportRows, filterReportRows };
 export type { ReportRow };
