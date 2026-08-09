@@ -134,7 +134,7 @@ Make these changes before production use:
 
 - Add request logs, error monitoring, and service health checks.
 
-- Use a managed MongoDB service with backups and recovery tests.
+- Configure and verify MongoDB Atlas backups, and perform recovery tests.
 
 - Add more integration and browser tests for authentication and report workflows.
 

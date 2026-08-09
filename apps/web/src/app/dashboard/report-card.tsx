@@ -259,8 +259,8 @@ export function ReportCard() {
               </EmptyMedia>
               <EmptyTitle>No rows in this date range</EmptyTitle>
               <EmptyDescription>
-                Save a monthly target in the selected range to create a report
-                row.
+                Save a monthly plan or actual entry in the selected range to
+                create a report row.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
