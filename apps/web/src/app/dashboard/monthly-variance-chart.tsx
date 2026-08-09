@@ -6,7 +6,14 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@crossval/ui/components/chart";
-import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { formatSignedCurrency } from "@/lib/formatters";
 
@@ -37,15 +44,29 @@ export function MonthlyVarianceChart({ rows }: { rows: ReportRow[] }) {
         className="h-64 w-full"
         config={chartConfig}
       >
-        <BarChart accessibilityLayer data={data} margin={{ left: 8, right: 8 }}>
+        <LineChart accessibilityLayer data={data} margin={{ left: 8, right: 8 }}>
           <CartesianGrid vertical={false} />
           <XAxis
             axisLine={false}
             dataKey="month"
+            padding={{ left: 32, right: 32 }}
             tickLine={false}
             tickMargin={8}
           />
-          <ReferenceLine y={0} />
+          <YAxis
+            domain={[
+              (dataMin: number) => Math.min(0, dataMin),
+              (dataMax: number) => Math.max(0, dataMax),
+            ]}
+            hide
+            padding={{ top: 12, bottom: 12 }}
+          />
+          <ReferenceLine
+            stroke="var(--muted-foreground)"
+            strokeDasharray="4 4"
+            strokeWidth={1.5}
+            y={0}
+          />
           <ChartTooltip
             cursor={false}
             content={
@@ -61,12 +82,14 @@ export function MonthlyVarianceChart({ rows }: { rows: ReportRow[] }) {
               />
             }
           />
-          <Bar
+          <Line
             dataKey="varianceCents"
-            fill="var(--color-varianceCents)"
-            radius={4}
+            dot={false}
+            stroke="var(--color-varianceCents)"
+            strokeWidth={2}
+            type="monotone"
           />
-        </BarChart>
+        </LineChart>
       </ChartContainer>
     </section>
   );
