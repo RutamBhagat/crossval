@@ -159,3 +159,97 @@ The current schema has these main compound indexes:
 Report requests filter by `userId` and a bounded month range in MongoDB. One MongoDB aggregation groups actual entries, unions them with plans, joins category-month values, calculates variances, and sorts the result. A `$facet` stage returns only the requested page together with the total row count and monthly chart totals. The application does not load all report rows for a paginated request.
 
 The dashboard plan, actual, and report lists use offset and limit pagination. The API limits each request to 50 rows. Report sorting supports month, category, and planned target. CSV export still reads all final report rows because the export contains the full selected range. Use query execution plans and production metrics to select more changes. These changes can include cursor pagination, export streaming, a reporting model, or more indexes.
+
+## Tests
+
+```bash
+pnpm run test
+$ pnpm --filter web test
+$ vitest run
+
+ RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/apps/web
+
+ ✓ tests/report.test.ts (15 tests) 27ms
+ ✓ tests/write-validation.test.ts (12 tests) 20ms
+ ✓ tests/actual-import.test.ts (10 tests) 28ms
+ ✓ tests/lock-enforcement.test.ts (5 tests) 27ms
+ ✓ tests/api-access.test.ts (4 tests) 17ms
+ ✓ tests/report.integration.test.ts (1 test) 732ms
+     ✓ calculates report rows in MongoDB without leaking another user's data  447ms
+
+ Test Files  6 passed (6)
+      Tests  47 passed (47)
+   Start at  00:42:04
+   Duration  2.48s (transform 224ms, setup 0ms, import 3.41s, tests 851ms, environment 0ms)
+```
+
+```bash
+pnpm run test:integration
+$ pnpm --filter @crossval/db test:integration && pnpm --filter web test:integration
+$ vitest run --config vitest.integration.config.mts
+
+ RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/packages/db
+
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:38466) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+ ✓ tests/period-state.integration.test.ts (4 tests) 285ms
+   ✓ period-state transaction integration (4)
+     ✓ rolls back the guard and does not write when one period is locked 28ms
+     ✓ makes close wait for an in-flight guarded write, then leaves the period locked 120ms
+     ✓ serializes the first guarded write with the first close 123ms
+     ✓ rejects a guarded write after close commits 10ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  00:43:07
+   Duration  467ms (transform 22ms, setup 9ms, import 114ms, tests 285ms, environment 0ms)
+
+$ vitest run --config vitest.integration.config.mts
+
+ RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/apps/web
+
+ ✓ tests/report.integration.test.ts (1 test) 41ms
+   ✓ report MongoDB aggregation integration (1)
+     ✓ calculates report rows in MongoDB without leaking another user's data 38ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:43:08
+   Duration  222ms (transform 30ms, setup 10ms, import 119ms, tests 41ms, environment 0ms)
+```
+
+```bash
+pnpm check-types
+$ pnpm -r check-types
+Scope: 6 of 7 workspace projects
+packages/ui check-types$ tsc --noEmit
+└─ Done in 1.4s
+apps/web check-types$ tsc --noEmit
+└─ Done in 1.2s
+```
+
+```bash
+pnpm build
+$ pnpm -r build
+Scope: 6 of 7 workspace projects
+apps/web build$ next build
+[14 lines collapsed]
+│ Route (app)
+│ ┌ ○ /
+│ ├ ○ /_not-found
+│ ├ ƒ /api/[[...route]]
+│ ├ ƒ /dashboard
+│ ├ ƒ /dashboard/periods
+│ ├ ƒ /dashboard/reports
+│ └ ○ /login
+│ ○  (Static)   prerendered as static content
+│ ƒ  (Dynamic)  server-rendered on demand
+└─ Done in 8s
+```
