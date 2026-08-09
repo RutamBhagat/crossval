@@ -10,6 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@crossval/ui/components/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@crossval/ui/components/collapsible";
 import { Field, FieldGroup, FieldLabel } from "@crossval/ui/components/field";
 import { Input } from "@crossval/ui/components/input";
 import {
@@ -22,7 +27,7 @@ import {
 } from "@crossval/ui/components/select";
 import { Separator } from "@crossval/ui/components/separator";
 import { Skeleton } from "@crossval/ui/components/skeleton";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 
 import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
 import { formatCurrency } from "@/lib/formatters";
@@ -30,8 +35,47 @@ import { formatCurrency } from "@/lib/formatters";
 import { MonthPicker } from "./month-picker";
 import { useActuals } from "./use-actuals";
 
+type ActualEntry = {
+  id: string;
+  categoryId: string;
+  month: string;
+  amountCents: number;
+  note?: string;
+};
+
+type ActualGroup = {
+  categoryId: string;
+  month: string;
+  totalCents: number;
+  entries: ActualEntry[];
+};
+
+function groupActuals(actuals: ActualEntry[]) {
+  const groups = new Map<string, ActualGroup>();
+
+  for (const actual of actuals) {
+    const key = `${actual.categoryId}:${actual.month}`;
+    const group = groups.get(key);
+
+    if (group) {
+      group.totalCents += actual.amountCents;
+      group.entries.push(actual);
+    } else {
+      groups.set(key, {
+        categoryId: actual.categoryId,
+        month: actual.month,
+        totalCents: actual.amountCents,
+        entries: [actual],
+      });
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
 export function MonthlyActualCard() {
   const { actuals, isLoading, isSaving, createActual } = useActuals();
+  const actualGroups = groupActuals(actuals);
 
   return (
     <Card className="h-full scroll-mt-20 shadow-none" id="actual-spend">
@@ -125,7 +169,9 @@ export function MonthlyActualCard() {
             <h3 id="logged-actuals-heading" className="text-xs font-medium">
               Logged actuals
             </h3>
-            <span className="font-mono text-xs text-muted-foreground">{actuals.length}</span>
+            <span className="text-xs text-muted-foreground">
+              {actuals.length} {actuals.length === 1 ? "entry" : "entries"}
+            </span>
           </div>
           {isLoading ? (
             <div className="flex flex-col gap-2" aria-label="Loading actuals">
@@ -135,23 +181,66 @@ export function MonthlyActualCard() {
           ) : actuals.length === 0 ? (
             <p className="py-3 text-xs text-muted-foreground">No actual spend logged yet.</p>
           ) : (
-            <ul className="divide-y" aria-label="Logged actual spend">
-              {actuals.map((actual) => (
-                <li className="flex items-start justify-between gap-4 py-3" key={actual.id}>
-                  <div>
-                    <p className="text-xs font-medium">{getCategoryName(actual.categoryId)}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{actual.month}</p>
-                    {actual.note && (
-                      <p className="mt-1 max-w-64 truncate text-xs text-muted-foreground">
-                        {actual.note}
-                      </p>
-                    )}
-                  </div>
-                  <span className="font-mono text-xs font-medium tabular-nums">
-                    {formatCurrency(actual.amountCents)}
-                  </span>
-                </li>
-              ))}
+            <ul className="divide-y" aria-label="Logged actual spend grouped by month">
+              {actualGroups.map((group) => {
+                const entryLabel = group.entries.length === 1 ? "entry" : "entries";
+
+                return (
+                  <li className="py-3" key={`${group.categoryId}:${group.month}`}>
+                    <Collapsible>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-medium">
+                            {getCategoryName(group.categoryId)}
+                          </p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {group.month}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="font-mono text-xs font-medium tabular-nums">
+                            {formatCurrency(group.totalCents)}
+                          </span>
+                          <CollapsibleTrigger
+                            render={
+                              <Button
+                                aria-label={`View ${group.entries.length} ${entryLabel} for ${getCategoryName(group.categoryId)} in ${group.month}`}
+                                className="group"
+                                size="sm"
+                                variant="ghost"
+                              />
+                            }
+                          >
+                            {group.entries.length} {entryLabel}
+                            <ChevronDown
+                              className="transition-transform group-data-panel-open:rotate-180"
+                              data-icon="inline-end"
+                            />
+                          </CollapsibleTrigger>
+                        </div>
+                      </div>
+                      <CollapsibleContent>
+                        <Separator className="mt-2" />
+                        <ul className="flex flex-col gap-2 pt-2" aria-label="Spend entries">
+                          {group.entries.map((actual) => (
+                            <li
+                              className="flex items-start justify-between gap-4 px-3 py-1"
+                              key={actual.id}
+                            >
+                              <p className="min-w-0 truncate text-xs text-muted-foreground">
+                                {actual.note || "No note"}
+                              </p>
+                              <span className="shrink-0 font-mono text-xs tabular-nums">
+                                {formatCurrency(actual.amountCents)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
