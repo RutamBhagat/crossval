@@ -116,8 +116,8 @@ export function ReportCard() {
               </EmptyTitle>
               <EmptyDescription>
                 {allRows.length === 0
-                  ? "Save a target and log actual spend for the same category and month."
-                  : "Select a range that includes months with plan and actual data."}
+                  ? "Save a monthly target to create a report row."
+                  : "Select a range that includes months with plan data."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

@@ -24,10 +24,6 @@ function buildReportRows(plans: MonthlyAmount[], actuals: MonthlyAmount[]): Repo
         actual.categoryId === plan.categoryId && actual.month === plan.month,
     );
 
-    if (matchingActuals.length === 0) {
-      return [];
-    }
-
     const actualCents = matchingActuals.reduce(
       (total, actual) => total + actual.amountCents,
       0,
