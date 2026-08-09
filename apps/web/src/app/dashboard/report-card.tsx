@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
+  Download,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -145,6 +146,17 @@ export function ReportCard() {
     }));
   }
 
+  function exportReport() {
+    const query = new URLSearchParams({
+      start: startMonth,
+      end: endMonth,
+      sort: sort.key,
+      direction: sort.direction,
+    });
+
+    window.location.assign(`/api/reports/export?${query}`);
+  }
+
   return (
     <Card className="scroll-mt-20 shadow-none" id="variance-report">
       <CardHeader className="border-b">
@@ -153,7 +165,19 @@ export function ReportCard() {
           Plan and actual spend matched by category and month.
         </CardDescription>
         <CardAction>
-          <Badge variant="secondary">{total} rows</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{total} rows</Badge>
+            <Button
+              disabled={isLoading || total === 0}
+              onClick={exportReport}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <Download data-icon="inline-start" />
+              Export CSV
+            </Button>
+          </div>
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">

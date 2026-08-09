@@ -14,16 +14,28 @@ const reportActualsQuerySchema = z.object({
   month: monthSchema,
 });
 
-const reportQuerySchema = paginationQuerySchema
-  .extend({
-    start: monthSchema,
-    end: monthSchema,
-    sort: z.enum(["month", "category", "target"]).default("month"),
-    direction: z.enum(["ascending", "descending"]).default("ascending"),
-  })
-  .refine(({ start, end }) => start <= end, {
-    message: "End month must not be before start month",
-    path: ["end"],
-  });
+const reportRangeFields = {
+  start: monthSchema,
+  end: monthSchema,
+  sort: z.enum(["month", "category", "target"]).default("month"),
+  direction: z.enum(["ascending", "descending"]).default("ascending"),
+};
 
-export { reportActualsQuerySchema, reportQuerySchema };
+const validRange = {
+  message: "End month must not be before start month",
+  path: ["end"] as string[],
+};
+
+const reportExportQuerySchema = z
+  .object(reportRangeFields)
+  .refine(({ start, end }) => start <= end, validRange);
+
+const reportQuerySchema = paginationQuerySchema
+  .extend(reportRangeFields)
+  .refine(({ start, end }) => start <= end, validRange);
+
+export {
+  reportActualsQuerySchema,
+  reportExportQuerySchema,
+  reportQuerySchema,
+};

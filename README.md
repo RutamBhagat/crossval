@@ -78,6 +78,10 @@ The report has previous and next fiscal-year controls, so no fixed year list req
 
 Locks apply to one calendar month and to one user. A locked month makes its plans and actuals read-only. The interface disables the related inputs, and the API rejects write requests with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
 
+### CSV export
+
+Use **Export CSV** in the variance report to download all report rows in the selected date range. The export uses the selected table sort order and is not limited to the current page. Amounts use decimal USD values. A zero plan has `N/A` in the Variance % column.
+
 ## CSV import
 
 Use **Import CSV** in the Actual spend card. The file must contain these headers:
