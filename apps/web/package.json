@@ -7,6 +7,7 @@
     "build": "next build",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "test:watch": "vitest",
     "start": "next start"
   },
