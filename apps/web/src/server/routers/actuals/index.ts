@@ -1,5 +1,5 @@
 import { Actual } from "@crossval/db/models/actual.model";
-import { PeriodLock } from "@crossval/db/models/period-lock.model";
+import { runIfPeriodsOpen } from "@crossval/db/period-state";
 import { zValidator } from "@hono/zod-validator";
 import { parse } from "csv-parse/sync";
 import { Hono } from "hono";
@@ -83,7 +83,11 @@ actualsRouter.post("/import", async (c) => {
     return c.json({ error: "CSV must contain month,category,amount headers and rows" }, 400);
   }
 
-  const importedActuals = [];
+  const importedActuals: Array<{
+    month: string;
+    categoryId: string;
+    amountCents: number;
+  }> = [];
   for (const [index, values] of rows.entries()) {
     const [month, categoryName, amount] = values;
     const categoryId = categoryName
@@ -109,11 +113,17 @@ actualsRouter.post("/import", async (c) => {
 
   const userId = c.get("userId");
   const months = [...new Set(importedActuals.map((actual) => actual.month))];
-  if (await PeriodLock.exists({ userId, month: { $in: months } })) {
+  const result = await runIfPeriodsOpen(userId, months, (session) =>
+    Actual.insertMany(
+      importedActuals.map((actual) => ({ ...actual, userId })),
+      { session },
+    ),
+  );
+
+  if (!result.ok) {
     return c.json({ error: "CSV contains actuals for a locked month" }, 423);
   }
 
-  await Actual.insertMany(importedActuals.map((actual) => ({ ...actual, userId })));
   return c.json({ imported: importedActuals.length }, 201);
 });
 
@@ -130,24 +140,35 @@ actualsRouter.post(
   async (c) => {
     const input = c.req.valid("json");
     const userId = c.get("userId");
-    const periodIsLocked = await PeriodLock.exists({ userId, month: input.month });
-
-    if (periodIsLocked) {
-      return c.json({ error: `Actuals for ${input.month} are locked` }, 423);
-    }
-
     const amountCents = amountToCents(input.amount);
     if (!Number.isSafeInteger(amountCents)) {
       return c.json({ error: "Amount is too large" }, 400);
     }
 
-    const actual = await Actual.create({
-      userId,
-      categoryId: input.categoryId,
-      month: input.month,
-      amountCents,
-      note: input.note || undefined,
+    const result = await runIfPeriodsOpen(userId, [input.month], async (session) => {
+      const [actual] = await Actual.create(
+        [
+          {
+            userId,
+            categoryId: input.categoryId,
+            month: input.month,
+            amountCents,
+            note: input.note || undefined,
+          },
+        ],
+        { session },
+      );
+      return actual;
     });
+
+    if (!result.ok) {
+      return c.json({ error: `Actuals for ${input.month} are locked` }, 423);
+    }
+
+    const actual = result.value;
+    if (!actual) {
+      return c.json({ error: "Actual could not be saved" }, 500);
+    }
 
     return c.json(
       {

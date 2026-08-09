@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
-import { PeriodLock } from "@crossval/db/models/period-lock.model";
 import { Plan } from "@crossval/db/models/plan.model";
+import { runIfPeriodsOpen } from "@crossval/db/period-state";
 import { Hono } from "hono";
 
 import { amountToCents } from "@/server/money";
@@ -71,27 +71,28 @@ plansRouter.put(
   async (c) => {
     const input = c.req.valid("json");
     const userId = c.get("userId");
-    const periodIsLocked = await PeriodLock.exists({ userId, month: input.month });
-
-    if (periodIsLocked) {
-      return c.json({ error: `Plans for ${input.month} are locked` }, 423);
-    }
-
     const amountCents = amountToCents(input.amount);
     if (!Number.isSafeInteger(amountCents)) {
       return c.json({ error: "Amount is too large" }, 400);
     }
 
-    const plan = await Plan.findOneAndUpdate(
-      {
-        userId,
-        categoryId: input.categoryId,
-        month: input.month,
-      },
-      { $set: { amountCents } },
-      { new: true, runValidators: true, upsert: true },
-    ).lean();
+    const result = await runIfPeriodsOpen(userId, [input.month], (session) =>
+      Plan.findOneAndUpdate(
+        {
+          userId,
+          categoryId: input.categoryId,
+          month: input.month,
+        },
+        { $set: { amountCents } },
+        { new: true, runValidators: true, session, upsert: true },
+      ).lean(),
+    );
 
+    if (!result.ok) {
+      return c.json({ error: `Plans for ${input.month} are locked` }, 423);
+    }
+
+    const plan = result.value;
     if (!plan) {
       return c.json({ error: "Plan could not be saved" }, 500);
     }

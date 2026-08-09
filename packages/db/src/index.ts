@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 await mongoose.connect(env.DATABASE_URL);
 
-const client = mongoose.connection.getClient().db();
+const connection = mongoose.connection;
+const client = connection.getClient().db();
 
-export { client };
+export { client, connection };

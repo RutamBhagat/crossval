@@ -1,4 +1,5 @@
-import { PeriodLock } from "@crossval/db/models/period-lock.model";
+import { PeriodState } from "@crossval/db/models/period-state.model";
+import { closePeriod } from "@crossval/db/period-state";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
@@ -11,7 +12,10 @@ const locksRouter = new Hono<{ Variables: AuthVariables }>();
 locksRouter.use("*", requireAuth);
 
 locksRouter.get("/", async (c) => {
-  const locks = await PeriodLock.find({ userId: c.get("userId") })
+  const locks = await PeriodState.find({
+    userId: c.get("userId"),
+    locked: { $ne: false },
+  })
     .sort({ month: -1 })
     .lean();
 
@@ -35,11 +39,7 @@ locksRouter.put(
   }),
   async (c) => {
     const { month } = c.req.valid("json");
-    const lock = await PeriodLock.findOneAndUpdate(
-      { userId: c.get("userId"), month },
-      { $setOnInsert: { userId: c.get("userId"), month } },
-      { new: true, runValidators: true, upsert: true },
-    ).lean();
+    const lock = await closePeriod(c.get("userId"), month);
 
     if (!lock) {
       return c.json({ error: "Month could not be locked" }, 500);

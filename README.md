@@ -10,6 +10,16 @@ Install these tools before you start:
 - [pnpm](https://pnpm.io/) 11.12.0
 - [Docker](https://www.docker.com/) with Docker Compose
 
+## Live deployment
+
+https://crossval-web-five.vercel.app/
+
+Production stack:
+- Vercel — Next.js application
+- MongoDB Atlas — production database
+
+The Docker Compose MongoDB configuration is only for local development.
+
 ## Local setup
 
 1. Install the workspace dependencies from the project root:
@@ -46,10 +56,10 @@ Install these tools before you start:
 
 7. Open [http://localhost:3000](http://localhost:3000).
 
-The local MongoDB database requires Docker. The example configuration uses this connection:
+The local MongoDB database requires Docker. It runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses this connection:
 
 ```text
-mongodb://root:password@localhost:27017/crossval?authSource=admin
+mongodb://localhost:27017/crossval?replicaSet=rs0
 ```
 
 For production, you can replace the local database with MongoDB Atlas. Set `DATABASE_URL` to the MongoDB Atlas connection string.
@@ -76,7 +86,7 @@ The report has previous and next fiscal-year controls, so no fixed year list req
 
 ### Monthly locking
 
-Locks apply to one calendar month and to one user. A locked month makes its plans and actuals read-only. The interface disables the related inputs, and the API rejects write requests with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
+Locks apply to one calendar month and to one user. A locked month makes its plans and actuals read-only. The lock state and each plan, actual, or CSV write use the same MongoDB transaction guard. Thus, a write cannot commit after a concurrent request closes its month. The interface disables the related inputs, and the API rejects write requests with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
 
 ### CSV export
 
@@ -126,7 +136,7 @@ The current schema has these main compound indexes:
 
 - Plans: unique `{ userId, categoryId, month }` and report range `{ userId, month, categoryId }`
 - Actuals: `{ userId, month, categoryId }`
-- Period locks: unique `{ userId, month }`
+- Period states: unique `{ userId, month }`
 
 Report requests filter by `userId` and a bounded month range in MongoDB. A MongoDB aggregation groups actual entries by month and category. The server joins these totals with the plans before it returns report rows. This prevents the browser from loading all entries for a user.
 
