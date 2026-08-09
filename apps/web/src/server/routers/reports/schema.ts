@@ -1,10 +1,18 @@
 import { z } from "zod";
 
+import { categories } from "@/lib/categories";
 import { paginationQuerySchema } from "@/server/pagination";
 
 const monthSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Month must use YYYY-MM");
+
+const categoryIds = new Set<string>(categories.map((category) => category.id));
+
+const reportActualsQuerySchema = z.object({
+  categoryId: z.string().refine((value) => categoryIds.has(value), "Unknown category"),
+  month: monthSchema,
+});
 
 const reportQuerySchema = paginationQuerySchema
   .extend({
@@ -18,4 +26,4 @@ const reportQuerySchema = paginationQuerySchema
     path: ["end"],
   });
 
-export { reportQuerySchema };
+export { reportActualsQuerySchema, reportQuerySchema };

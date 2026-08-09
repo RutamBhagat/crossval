@@ -12,7 +12,7 @@ import {
   type ReportRow,
 } from "@/server/report";
 
-import { reportQuerySchema } from "./schema";
+import { reportActualsQuerySchema, reportQuerySchema } from "./schema";
 
 type AggregatedActual = {
   _id: { categoryId: string; month: string };
@@ -22,6 +22,36 @@ type AggregatedActual = {
 const reportsRouter = new Hono<{ Variables: AuthVariables }>();
 
 reportsRouter.use("*", requireAuth);
+
+reportsRouter.get(
+  "/actuals",
+  zValidator("query", reportActualsQuerySchema, (result, c) => {
+    if (!result.success) {
+      return c.json(
+        { error: result.error.issues[0]?.message ?? "Invalid report row" },
+        400,
+      );
+    }
+  }),
+  async (c) => {
+    const { categoryId, month } = c.req.valid("query");
+    const actuals = await Actual.find({
+      userId: c.get("userId"),
+      categoryId,
+      month,
+    })
+      .sort({ _id: 1 })
+      .lean();
+
+    return c.json({
+      actuals: actuals.map((actual) => ({
+        id: actual._id.toString(),
+        amountCents: actual.amountCents,
+        note: actual.note,
+      })),
+    });
+  },
+);
 
 reportsRouter.get(
   "/",

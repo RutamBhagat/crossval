@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   actualAggregate: vi.fn(),
+  actualFind: vi.fn(),
+  actualLean: vi.fn(),
+  actualSort: vi.fn(),
   planFind: vi.fn(),
   planLean: vi.fn(),
   planSort: vi.fn(),
@@ -16,7 +19,7 @@ vi.mock("@crossval/auth", () => ({
 }));
 
 vi.mock("@crossval/db/models/actual.model", () => ({
-  Actual: { aggregate: mocks.actualAggregate },
+  Actual: { aggregate: mocks.actualAggregate, find: mocks.actualFind },
 }));
 
 vi.mock("@crossval/db/models/plan.model", () => ({
@@ -29,6 +32,9 @@ import { reportsRouter } from "../src/server/routers/reports";
 describe("report aggregation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.actualFind.mockReturnValue({ sort: mocks.actualSort });
+    mocks.actualSort.mockReturnValue({ lean: mocks.actualLean });
+    mocks.actualLean.mockResolvedValue([]);
     mocks.planFind.mockReturnValue({ sort: mocks.planSort });
     mocks.planSort.mockReturnValue({ lean: mocks.planLean });
     mocks.planLean.mockResolvedValue([
@@ -40,6 +46,30 @@ describe("report aggregation", () => {
         actualCents: 480_000,
       },
     ]);
+  });
+
+  it("returns only the authenticated user's entries behind one report row", async () => {
+    mocks.actualLean.mockResolvedValue([
+      { _id: "actual-1", amountCents: 300_000, note: "Campaign" },
+      { _id: "actual-2", amountCents: 180_000 },
+    ]);
+
+    const response = await reportsRouter.request(
+      "/actuals?categoryId=marketing&month=2026-01",
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      actuals: [
+        { id: "actual-1", amountCents: 300_000, note: "Campaign" },
+        { id: "actual-2", amountCents: 180_000 },
+      ],
+    });
+    expect(mocks.actualFind).toHaveBeenCalledWith({
+      userId: "user-1",
+      categoryId: "marketing",
+      month: "2026-01",
+    });
   });
 
   it("returns server-built rows for the authenticated user and month range", async () => {

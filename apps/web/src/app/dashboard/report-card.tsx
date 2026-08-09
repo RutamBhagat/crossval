@@ -46,6 +46,7 @@ import {
 import { MonthPicker } from "./month-picker";
 import { MonthlyVarianceChart } from "./monthly-variance-chart";
 import { PaginationControls } from "./pagination-controls";
+import { ReportActualsDialog } from "./report-actuals-dialog";
 import {
   type ReportSortDirection,
   type ReportSortKey,
@@ -105,6 +106,10 @@ export function ReportCard() {
     key: "month",
     direction: "descending",
   });
+  const [selectedRow, setSelectedRow] = useState<{
+    categoryId: string;
+    month: string;
+  }>();
   const { rows, monthlyVariance, total, isLoading } = useReport(
     range.start,
     range.end,
@@ -234,8 +239,24 @@ export function ReportCard() {
                   <TableCell className="text-right font-mono tabular-nums">
                     {formatCurrency(row.planCents)}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {formatCurrency(row.actualCents)}
+                  <TableCell className="text-right">
+                    <Button
+                      aria-label={`Show actual entries for ${getCategoryName(row.categoryId)} in ${row.month}`}
+                      className="-my-2 -mr-2 ml-auto"
+                      onClick={() =>
+                        setSelectedRow({
+                          categoryId: row.categoryId,
+                          month: row.month,
+                        })
+                      }
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <span className="font-mono tabular-nums">
+                        {formatCurrency(row.actualCents)}
+                      </span>
+                    </Button>
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium tabular-nums">
                     {formatSignedCurrency(row.varianceCents)}
@@ -259,6 +280,12 @@ export function ReportCard() {
           </div>
         )}
       </CardContent>
+      <ReportActualsDialog
+        onOpenChange={(open) => {
+          if (!open) setSelectedRow(undefined);
+        }}
+        row={selectedRow}
+      />
     </Card>
   );
 }
