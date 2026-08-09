@@ -11,6 +11,7 @@
     "build": "pnpm -r build",
     "check-types": "pnpm -r check-types",
     "test:watch": "pnpm --filter web test:watch",
+    "test:integration": "pnpm --filter @crossval/db test:integration",
     "dev:web": "pnpm --filter web dev",
     "db:start": "pnpm --filter @crossval/db db:start",
     "db:watch": "pnpm --filter @crossval/db db:watch",

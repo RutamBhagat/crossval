@@ -65,6 +65,14 @@ mongodb://localhost:27017/crossval?replicaSet=rs0
 
 For production, you can replace the local database with MongoDB Atlas. Set `DATABASE_URL` to the MongoDB Atlas connection string.
 
+To run the MongoDB transaction integration tests, keep MongoDB running and use:
+
+```bash
+pnpm test:integration
+```
+
+The tests use the `crossval_integration` database by default. Set `INTEGRATION_DATABASE_URL` to use a different test replica set.
+
 To stop MongoDB, run:
 
 ```bash
