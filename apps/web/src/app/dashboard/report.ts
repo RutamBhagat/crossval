@@ -17,6 +17,19 @@ function filterReportRows(rows: ReportRow[], startMonth: string, endMonth: strin
   return rows.filter((row) => row.month >= startMonth && row.month <= endMonth);
 }
 
+function buildMonthlyVariance(rows: ReportRow[]) {
+  const totals = new Map<string, number>();
+
+  for (const row of rows) {
+    totals.set(row.month, (totals.get(row.month) ?? 0) + row.varianceCents);
+  }
+
+  return Array.from(totals, ([month, varianceCents]) => ({
+    month,
+    varianceCents,
+  })).sort((left, right) => left.month.localeCompare(right.month));
+}
+
 function buildReportRows(plans: MonthlyAmount[], actuals: MonthlyAmount[]): ReportRow[] {
   return plans.flatMap((plan) => {
     const matchingActuals = actuals.filter(
@@ -46,5 +59,5 @@ function buildReportRows(plans: MonthlyAmount[], actuals: MonthlyAmount[]): Repo
   });
 }
 
-export { buildReportRows, filterReportRows };
+export { buildMonthlyVariance, buildReportRows, filterReportRows };
 export type { ReportRow };

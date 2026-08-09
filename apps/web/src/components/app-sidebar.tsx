@@ -14,17 +14,24 @@ import {
   SidebarRail,
   useSidebar,
 } from "@crossval/ui/components/sidebar";
-import { LayoutDashboard } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import UserMenu from "./user-menu";
 
 const navigation = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  {
+    label: "Reports",
+    href: "/dashboard/reports",
+    icon: ChartNoAxesColumnIncreasing,
+  },
 ] as const;
 
 export function AppSidebar() {
+  const pathname = usePathname();
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -59,7 +66,7 @@ export function AppSidebar() {
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   <SidebarMenuButton
-                    isActive={item.label === "Overview"}
+                    isActive={pathname === item.href}
                     render={<Link href={item.href} />}
                     tooltip={item.label}
                   >

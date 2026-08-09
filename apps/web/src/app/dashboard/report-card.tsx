@@ -44,6 +44,7 @@ import {
 } from "@/lib/formatters";
 
 import { MonthPicker } from "./month-picker";
+import { MonthlyVarianceChart } from "./monthly-variance-chart";
 import { buildReportRows, filterReportRows, type ReportRow } from "./report";
 import { useActuals } from "./use-actuals";
 import { usePlans } from "./use-plans";
@@ -218,7 +219,9 @@ export function ReportCard() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <Table>
+          <div className="flex flex-col gap-6">
+            <MonthlyVarianceChart rows={rows} />
+            <Table>
             <TableHeader>
               <TableRow>
                 <SortableTableHead
@@ -287,7 +290,8 @@ export function ReportCard() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
