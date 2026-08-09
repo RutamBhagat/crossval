@@ -142,7 +142,7 @@ Make these changes before production use:
 
 - Add request logs, error monitoring, and service health checks.
 
-- Configure and verify MongoDB Atlas backups, and perform recovery tests.
+- Configure and verify MongoDB Atlas backups. Test database recovery.
 
 - Add more integration and browser tests for authentication and report workflows.
 
@@ -158,4 +158,4 @@ The current schema has these main compound indexes:
 
 Report requests filter by `userId` and a bounded month range in MongoDB. One MongoDB aggregation groups actual entries, unions them with plans, joins category-month values, calculates variances, and sorts the result. A `$facet` stage returns only the requested page together with the total row count and monthly chart totals. The application does not load all report rows for a paginated request.
 
-The dashboard plan, actual, and report lists use offset and limit pagination. The API limits each request to 50 rows. Report sorting supports month, category, and planned target. CSV export still reads all final report rows because the export contains the full selected range. Query execution plans and production metrics would determine whether cursor pagination, export streaming, a reporting model, or more indexes are necessary.
+The dashboard plan, actual, and report lists use offset and limit pagination. The API limits each request to 50 rows. Report sorting supports month, category, and planned target. CSV export still reads all final report rows because the export contains the full selected range. Use query execution plans and production metrics to select more changes. These changes can include cursor pagination, export streaming, a reporting model, or more indexes.
