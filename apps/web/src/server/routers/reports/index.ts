@@ -1,15 +1,12 @@
 import { Actual } from "@crossval/db/models/actual.model";
-import { Plan } from "@crossval/db/models/plan.model";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
-import { getCategoryName } from "@/lib/categories";
+import { categories, getCategoryName } from "@/lib/categories";
 import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
 import {
-  buildMonthlyVariance,
   buildReportCsv,
-  buildReportRows,
-  type MonthlyActualTotal,
+  type MonthlyVariance,
   type ReportRow,
 } from "@/server/report";
 
@@ -19,9 +16,10 @@ import {
   reportQuerySchema,
 } from "./schema";
 
-type AggregatedActual = {
-  _id: { categoryId: string; month: string };
-  actualCents: number;
+type ReportAggregation = {
+  rows: ReportRow[];
+  monthlyVariance: MonthlyVariance[];
+  metadata: { total: number }[];
 };
 
 const reportsRouter = new Hono<{ Variables: AuthVariables }>();
@@ -29,58 +27,160 @@ const reportsRouter = new Hono<{ Variables: AuthVariables }>();
 type ReportSort = "month" | "category" | "target";
 type ReportSortDirection = "ascending" | "descending";
 
-async function loadReportRows(userId: string, start: string, end: string) {
+const categoryNameBranches = categories.map((category) => ({
+  case: { $eq: ["$_id.categoryId", category.id] },
+  then: category.name,
+}));
+
+function reportRowsPipeline(userId: string, start: string, end: string) {
   const month = { $gte: start, $lte: end };
-  const [plans, aggregatedActuals] = await Promise.all([
-    Plan.find({ userId, month }).sort({ month: -1, categoryId: 1 }).lean(),
-    Actual.aggregate<AggregatedActual>([
-      { $match: { userId, month } },
-      {
-        $group: {
-          _id: { categoryId: "$categoryId", month: "$month" },
-          actualCents: { $sum: "$amountCents" },
+
+  return [
+    { $match: { userId, month } },
+    {
+      $group: {
+        _id: { categoryId: "$categoryId", month: "$month" },
+        actualCents: { $sum: "$amountCents" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        categoryId: "$_id.categoryId",
+        month: "$_id.month",
+        planCents: { $literal: 0 },
+        actualCents: 1,
+      },
+    },
+    {
+      $unionWith: {
+        coll: "plans",
+        pipeline: [
+          { $match: { userId, month } },
+          {
+            $project: {
+              _id: 0,
+              categoryId: 1,
+              month: 1,
+              planCents: "$amountCents",
+              actualCents: { $literal: 0 },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $group: {
+        _id: { categoryId: "$categoryId", month: "$month" },
+        planCents: { $sum: "$planCents" },
+        actualCents: { $sum: "$actualCents" },
+      },
+    },
+    {
+      $set: {
+        categoryId: "$_id.categoryId",
+        month: "$_id.month",
+        varianceCents: { $subtract: ["$actualCents", "$planCents"] },
+        categoryName: {
+          $switch: {
+            branches: categoryNameBranches,
+            default: "$_id.categoryId",
+          },
         },
       },
-    ]),
-  ]);
-  const actualTotals: MonthlyActualTotal[] = aggregatedActuals.map(
-    (actual) => ({
-      categoryId: actual._id.categoryId,
-      month: actual._id.month,
-      actualCents: actual.actualCents,
-    }),
-  );
-
-  return buildReportRows(plans, actualTotals);
+    },
+    {
+      $set: {
+        variancePercent: {
+          $cond: [
+            { $eq: ["$planCents", 0] },
+            null,
+            {
+              $multiply: [{ $divide: ["$varianceCents", "$planCents"] }, 100],
+            },
+          ],
+        },
+      },
+    },
+  ];
 }
 
-function sortReportRows(
-  reports: ReportRow[],
+function reportSortStage(
+  sort: ReportSort,
+  direction: ReportSortDirection,
+): { $sort: Record<string, 1 | -1> } {
+  const value: 1 | -1 = direction === "ascending" ? 1 : -1;
+
+  if (sort === "category") {
+    return { $sort: { categoryName: value, month: 1, categoryId: 1 } };
+  }
+  if (sort === "target") {
+    return { $sort: { planCents: value, month: 1, categoryId: 1 } };
+  }
+  return { $sort: { month: value, categoryId: 1 } };
+}
+
+const reportRowProjectStage = {
+  $project: {
+    _id: 0,
+    categoryId: 1,
+    month: 1,
+    planCents: 1,
+    actualCents: 1,
+    varianceCents: 1,
+    variancePercent: 1,
+  },
+};
+
+async function loadReportRows(
+  userId: string,
+  start: string,
+  end: string,
   sort: ReportSort,
   direction: ReportSortDirection,
 ) {
-  const valueFor = (row: ReportRow) => {
-    if (sort === "category") return getCategoryName(row.categoryId);
-    if (sort === "target") return row.planCents;
-    return row.month;
-  };
+  return Actual.aggregate<ReportRow>([
+    ...reportRowsPipeline(userId, start, end),
+    reportSortStage(sort, direction),
+    reportRowProjectStage,
+  ]);
+}
 
-  return [...reports].sort((left, right) => {
-    const leftValue = valueFor(left);
-    const rightValue = valueFor(right);
-    const comparison =
-      typeof leftValue === "string" && typeof rightValue === "string"
-        ? leftValue.localeCompare(rightValue)
-        : Number(leftValue) - Number(rightValue);
+async function loadReportPage(
+  userId: string,
+  start: string,
+  end: string,
+  sort: ReportSort,
+  direction: ReportSortDirection,
+  offset: number,
+  limit: number,
+) {
+  const [result] = await Actual.aggregate<ReportAggregation>([
+    ...reportRowsPipeline(userId, start, end),
+    {
+      $facet: {
+        rows: [
+          reportSortStage(sort, direction),
+          { $skip: offset },
+          { $limit: limit },
+          reportRowProjectStage,
+        ],
+        monthlyVariance: [
+          {
+            $group: {
+              _id: "$month",
+              varianceCents: { $sum: "$varianceCents" },
+            },
+          },
+          { $sort: { _id: 1 } },
+          { $project: { _id: 0, month: "$_id", varianceCents: 1 } },
+        ],
+        metadata: [{ $count: "total" }],
+      },
+    },
+  ]);
 
-    if (comparison !== 0) {
-      return direction === "ascending" ? comparison : -comparison;
-    }
-
-    return `${left.month}:${left.categoryId}`.localeCompare(
-      `${right.month}:${right.categoryId}`,
-    );
-  });
+  return result ?? { rows: [], monthlyVariance: [], metadata: [] };
 }
 
 reportsRouter.use("*", requireAuth);
@@ -127,11 +227,14 @@ reportsRouter.get(
   }),
   async (c) => {
     const { direction, end, sort, start } = c.req.valid("query");
-    const reports = await loadReportRows(c.get("userId"), start, end);
-    const csv = buildReportCsv(
-      sortReportRows(reports, sort, direction),
-      getCategoryName,
+    const reports = await loadReportRows(
+      c.get("userId"),
+      start,
+      end,
+      sort,
+      direction,
     );
+    const csv = buildReportCsv(reports, getCategoryName);
 
     return new Response(csv, {
       headers: {
@@ -154,22 +257,20 @@ reportsRouter.get(
   }),
   async (c) => {
     const { direction, end, limit, offset, sort, start } = c.req.valid("query");
-    const reports = await loadReportRows(c.get("userId"), start, end);
-
-    // Keep the unpaginated response for API clients that do not request a page.
-    if (
-      c.req.query("offset") === undefined &&
-      c.req.query("limit") === undefined
-    ) {
-      return c.json({ reports });
-    }
-
-    const sortedReports = sortReportRows(reports, sort, direction);
+    const { metadata, monthlyVariance, rows } = await loadReportPage(
+      c.get("userId"),
+      start,
+      end,
+      sort,
+      direction,
+      offset,
+      limit,
+    );
 
     return c.json({
-      reports: sortedReports.slice(offset, offset + limit),
-      monthlyVariance: buildMonthlyVariance(reports),
-      total: reports.length,
+      reports: rows,
+      monthlyVariance,
+      total: metadata[0]?.total ?? 0,
       offset,
       limit,
     });

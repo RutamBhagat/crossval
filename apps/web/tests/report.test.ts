@@ -5,9 +5,6 @@ const mocks = vi.hoisted(() => ({
   actualFind: vi.fn(),
   actualLean: vi.fn(),
   actualSort: vi.fn(),
-  planFind: vi.fn(),
-  planLean: vi.fn(),
-  planSort: vi.fn(),
 }));
 
 vi.mock("@crossval/auth", () => ({
@@ -20,10 +17,6 @@ vi.mock("@crossval/auth", () => ({
 
 vi.mock("@crossval/db/models/actual.model", () => ({
   Actual: { aggregate: mocks.actualAggregate, find: mocks.actualFind },
-}));
-
-vi.mock("@crossval/db/models/plan.model", () => ({
-  Plan: { find: mocks.planFind },
 }));
 
 import {
@@ -39,15 +32,20 @@ describe("report aggregation", () => {
     mocks.actualFind.mockReturnValue({ sort: mocks.actualSort });
     mocks.actualSort.mockReturnValue({ lean: mocks.actualLean });
     mocks.actualLean.mockResolvedValue([]);
-    mocks.planFind.mockReturnValue({ sort: mocks.planSort });
-    mocks.planSort.mockReturnValue({ lean: mocks.planLean });
-    mocks.planLean.mockResolvedValue([
-      { categoryId: "marketing", month: "2026-01", amountCents: 500_000 },
-    ]);
     mocks.actualAggregate.mockResolvedValue([
       {
-        _id: { categoryId: "marketing", month: "2026-01" },
-        actualCents: 480_000,
+        rows: [
+          {
+            categoryId: "marketing",
+            month: "2026-01",
+            planCents: 500_000,
+            actualCents: 480_000,
+            varianceCents: -20_000,
+            variancePercent: -4,
+          },
+        ],
+        monthlyVariance: [{ month: "2026-01", varianceCents: -20_000 }],
+        metadata: [{ total: 1 }],
       },
     ]);
   });
@@ -91,45 +89,45 @@ describe("report aggregation", () => {
           variancePercent: -4,
         },
       ],
+      monthlyVariance: [{ month: "2026-01", varianceCents: -20_000 }],
+      total: 1,
+      offset: 0,
+      limit: 10,
     });
-    expect(mocks.planFind).toHaveBeenCalledWith({
-      userId: "user-1",
-      month: { $gte: "2026-01", $lte: "2026-03" },
-    });
-    expect(mocks.actualAggregate).toHaveBeenCalledWith([
-      {
-        $match: {
-          userId: "user-1",
-          month: { $gte: "2026-01", $lte: "2026-03" },
+    expect(mocks.actualAggregate).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        {
+          $match: {
+            userId: "user-1",
+            month: { $gte: "2026-01", $lte: "2026-03" },
+          },
         },
-      },
-      {
-        $group: {
-          _id: { categoryId: "$categoryId", month: "$month" },
-          actualCents: { $sum: "$amountCents" },
-        },
-      },
-    ]);
+        expect.objectContaining({
+          $unionWith: expect.objectContaining({ coll: "plans" }),
+        }),
+        expect.objectContaining({ $facet: expect.any(Object) }),
+      ]),
+    );
   });
 
   it("sorts before pagination and calculates chart totals from every report row", async () => {
-    mocks.planLean.mockResolvedValue([
-      { categoryId: "marketing", month: "2026-02", amountCents: 400_000 },
-      { categoryId: "payroll", month: "2026-01", amountCents: 900_000 },
-      { categoryId: "tools", month: "2026-01", amountCents: 100_000 },
-    ]);
     mocks.actualAggregate.mockResolvedValue([
       {
-        _id: { categoryId: "marketing", month: "2026-02" },
-        actualCents: 450_000,
-      },
-      {
-        _id: { categoryId: "payroll", month: "2026-01" },
-        actualCents: 800_000,
-      },
-      {
-        _id: { categoryId: "tools", month: "2026-01" },
-        actualCents: 125_000,
+        rows: [
+          {
+            categoryId: "marketing",
+            month: "2026-02",
+            planCents: 400_000,
+            actualCents: 450_000,
+            varianceCents: 50_000,
+            variancePercent: 12.5,
+          },
+        ],
+        monthlyVariance: [
+          { month: "2026-01", varianceCents: -75_000 },
+          { month: "2026-02", varianceCents: 50_000 },
+        ],
+        metadata: [{ total: 3 }],
       },
     ]);
 
@@ -157,6 +155,17 @@ describe("report aggregation", () => {
       offset: 1,
       limit: 1,
     });
+    const pipeline = mocks.actualAggregate.mock.calls[0]?.[0];
+    const facet = pipeline.find(
+      (stage: Record<string, unknown>) => "$facet" in stage,
+    ).$facet;
+    expect(facet.rows).toEqual(
+      expect.arrayContaining([
+        { $sort: { planCents: -1, month: 1, categoryId: 1 } },
+        { $skip: 1 },
+        { $limit: 1 },
+      ]),
+    );
   });
 });
 
@@ -253,7 +262,6 @@ describe("report range validation", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error).toEqual(expect.any(String));
-    expect(mocks.planFind).not.toHaveBeenCalled();
     expect(mocks.actualAggregate).not.toHaveBeenCalled();
   });
 });

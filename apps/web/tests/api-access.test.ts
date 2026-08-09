@@ -128,22 +128,22 @@ describe("API access boundaries", () => {
       async (filter: Record<string, unknown>) =>
         actuals.filter((record) => matches(record, filter)).length,
     );
-    mocks.actualAggregate.mockImplementation(
-      async (pipeline: Array<Record<string, Record<string, unknown>>>) => {
-        const filter = pipeline[0]?.$match ?? {};
-        const totals = new Map<string, number>();
-        for (const actual of actuals.filter((record) =>
-          matches(record, filter),
-        )) {
-          const key = `${actual.categoryId}:${actual.month}`;
-          totals.set(key, (totals.get(key) ?? 0) + actual.amountCents);
-        }
-        return [...totals].map(([key, actualCents]) => {
-          const [categoryId, month] = key.split(":");
-          return { _id: { categoryId, month }, actualCents };
-        });
+    mocks.actualAggregate.mockResolvedValue([
+      {
+        rows: [
+          {
+            categoryId: "marketing",
+            month: "2026-01",
+            planCents: 20_000,
+            actualCents: 10_000,
+            varianceCents: -10_000,
+            variancePercent: -50,
+          },
+        ],
+        monthlyVariance: [{ month: "2026-01", varianceCents: -10_000 }],
+        metadata: [{ total: 1 }],
       },
-    );
+    ]);
   });
 
   it.each([
@@ -185,7 +185,7 @@ describe("API access boundaries", () => {
       ],
       total: 2,
     });
-    await expect(reportResponse.json()).resolves.toEqual({
+    await expect(reportResponse.json()).resolves.toMatchObject({
       reports: [
         {
           categoryId: "marketing",
@@ -196,6 +196,7 @@ describe("API access boundaries", () => {
           variancePercent: -50,
         },
       ],
+      total: 1,
     });
 
     expect(mocks.planFind).toHaveBeenCalledWith(
@@ -205,6 +206,13 @@ describe("API access boundaries", () => {
     expect(mocks.actualAggregate).toHaveBeenCalledWith(
       expect.arrayContaining([
         { $match: expect.objectContaining({ userId: "user-a" }) },
+        {
+          $unionWith: expect.objectContaining({
+            pipeline: expect.arrayContaining([
+              { $match: expect.objectContaining({ userId: "user-a" }) },
+            ]),
+          }),
+        },
       ]),
     );
   });

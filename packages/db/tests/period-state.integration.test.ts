@@ -57,7 +57,14 @@ describe("period-state transaction integration", () => {
       ["2026-01", "2026-02"],
       (session) =>
         Actual.create(
-          [{ userId, categoryId: "marketing", month: "2026-01", amountCents: 100 }],
+          [
+            {
+              userId,
+              categoryId: "marketing",
+              month: "2026-01",
+              amountCents: 100,
+            },
+          ],
           { session },
         ),
     );
@@ -79,19 +86,15 @@ describe("period-state transaction integration", () => {
     let closeFinished = false;
     const completionOrder: string[] = [];
 
-    const writePromise = runIfPeriodsOpen(
-      userId,
-      [month],
-      async (session) => {
-        writeHasLock.resolve();
-        await writeCanFinish.promise;
-        await Actual.create(
-          [{ userId, categoryId: "payroll", month, amountCents: 500 }],
-          { session },
-        );
-        return "written";
-      },
-    ).then((result) => {
+    const writePromise = runIfPeriodsOpen(userId, [month], async (session) => {
+      writeHasLock.resolve();
+      await writeCanFinish.promise;
+      await Actual.create(
+        [{ userId, categoryId: "payroll", month, amountCents: 500 }],
+        { session },
+      );
+      return "written";
+    }).then((result) => {
       completionOrder.push("write committed");
       return result;
     });
@@ -115,7 +118,61 @@ describe("period-state transaction integration", () => {
     expect(closedState).toMatchObject({ locked: true });
     expect(completionOrder).toEqual(["write committed", "close completed"]);
     await expect(Actual.countDocuments({ userId, month })).resolves.toBe(1);
-    await expect(PeriodState.findOne({ userId, month }).lean()).resolves.toMatchObject({
+    await expect(
+      PeriodState.findOne({ userId, month }).lean(),
+    ).resolves.toMatchObject({
+      locked: true,
+      revision: 2,
+    });
+  });
+
+  it("serializes the first guarded write with the first close", async () => {
+    const userId = testUserId();
+    const month = "2026-04";
+
+    const writeCanFinish = deferred();
+    const writeHasCreatedState = deferred();
+    let closeFinished = false;
+    const completionOrder: string[] = [];
+
+    const writePromise = runIfPeriodsOpen(userId, [month], async (session) => {
+      writeHasCreatedState.resolve();
+      await writeCanFinish.promise;
+      await Actual.create(
+        [{ userId, categoryId: "payroll", month, amountCents: 500 }],
+        { session },
+      );
+      return "written";
+    }).then((result) => {
+      completionOrder.push("write committed");
+      return result;
+    });
+
+    await writeHasCreatedState.promise;
+    await expect(PeriodState.countDocuments({ userId, month })).resolves.toBe(
+      0,
+    );
+
+    const closePromise = closePeriod(userId, month).then((state) => {
+      closeFinished = true;
+      completionOrder.push("close completed");
+      return state;
+    });
+
+    await wait(100);
+    expect(closeFinished).toBe(false);
+
+    writeCanFinish.resolve();
+    const writeResult = await writePromise;
+    const closedState = await closePromise;
+
+    expect(writeResult.ok).toBe(true);
+    expect(closedState).toMatchObject({ locked: true });
+    expect(completionOrder).toEqual(["write committed", "close completed"]);
+    await expect(Actual.countDocuments({ userId, month })).resolves.toBe(1);
+    await expect(
+      PeriodState.findOne({ userId, month }).lean(),
+    ).resolves.toMatchObject({
       locked: true,
       revision: 2,
     });

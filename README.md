@@ -156,6 +156,6 @@ The current schema has these main compound indexes:
 - Actuals: `{ userId, month, categoryId }`
 - Period states: unique `{ userId, month }`
 
-Report requests filter by `userId` and a bounded month range in MongoDB. A MongoDB aggregation groups actual entries by month and category. The server joins these totals with the plans before it returns report rows. This prevents the browser from loading all entries for a user.
+Report requests filter by `userId` and a bounded month range in MongoDB. One MongoDB aggregation groups actual entries, unions them with plans, joins category-month values, calculates variances, and sorts the result. A `$facet` stage returns only the requested page together with the total row count and monthly chart totals. The application does not load all report rows for a paginated request.
 
-The dashboard plan, actual, and report lists use offset and limit pagination. The API limits each request to 50 rows. Report sorting supports month, category, and planned target. Query execution plans and production metrics would determine whether cursor pagination or more indexes are necessary.
+The dashboard plan, actual, and report lists use offset and limit pagination. The API limits each request to 50 rows. Report sorting supports month, category, and planned target. CSV export still reads all final report rows because the export contains the full selected range. Query execution plans and production metrics would determine whether cursor pagination, export streaming, a reporting model, or more indexes are necessary.
