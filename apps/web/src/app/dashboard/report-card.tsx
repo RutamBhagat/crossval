@@ -32,6 +32,8 @@ import {
   ArrowDown,
   ArrowUp,
   ChartNoAxesColumnIncreasing,
+  ChevronLeft,
+  ChevronRight,
   ChevronsUpDown,
 } from "lucide-react";
 import { useState } from "react";
@@ -43,6 +45,10 @@ import {
   formatSignedPercent,
 } from "@/lib/formatters";
 
+import {
+  calendarFiscalYearForRange,
+  calendarFiscalYearRange,
+} from "./fiscal-year";
 import { MonthPicker } from "./month-picker";
 import { MonthlyVarianceChart } from "./monthly-variance-chart";
 import { PaginationControls } from "./pagination-controls";
@@ -96,11 +102,9 @@ function SortableTableHead({
 
 export function ReportCard() {
   const today = new Date();
-  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const [range, setRange] = useState({
-    start: `${today.getFullYear()}-01`,
-    end: currentMonth,
-  });
+  const [range, setRange] = useState(() =>
+    calendarFiscalYearRange(today.getFullYear()),
+  );
   const [pagination, setPagination] = useState({ offset: 0, limit: 10 });
   const [sort, setSort] = useState<SortState>({
     key: "month",
@@ -120,6 +124,15 @@ export function ReportCard() {
   );
   const startMonth = range.start;
   const endMonth = range.end;
+  const fiscalYear = calendarFiscalYearForRange(range);
+  const rangeYear = Number(startMonth.slice(0, 4));
+  const displayedFiscalYear =
+    fiscalYear === "custom" ? rangeYear : Number(fiscalYear);
+
+  function selectFiscalYear(year: number) {
+    setPagination((current) => ({ ...current, offset: 0 }));
+    setRange(calendarFiscalYearRange(year));
+  }
 
   function handleSort(column: ReportSortKey) {
     setPagination((current) => ({ ...current, offset: 0 }));
@@ -144,7 +157,35 @@ export function ReportCard() {
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <section aria-label="Report date range" className="grid gap-4 sm:grid-cols-2">
+        <section aria-label="Report date range" className="grid gap-4 sm:grid-cols-3">
+          <Field>
+            <FieldLabel>Fiscal year (Jan–Dec)</FieldLabel>
+            <div className="grid grid-cols-[auto_1fr_auto]">
+              <Button
+                aria-label={`Show fiscal year ${displayedFiscalYear - 1}`}
+                className="rounded-r-none"
+                onClick={() => selectFiscalYear(displayedFiscalYear - 1)}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                <ChevronLeft />
+              </Button>
+              <div className="flex items-center justify-center border-y text-sm font-medium tabular-nums">
+                {fiscalYear === "custom" ? "Custom range" : fiscalYear}
+              </div>
+              <Button
+                aria-label={`Show fiscal year ${displayedFiscalYear + 1}`}
+                className="rounded-l-none"
+                onClick={() => selectFiscalYear(displayedFiscalYear + 1)}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                <ChevronRight />
+              </Button>
+            </div>
+          </Field>
           <Field>
             <FieldLabel htmlFor="report-start-month">Start month</FieldLabel>
             <MonthPicker

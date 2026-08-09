@@ -70,6 +70,10 @@ The report treats a missing actual as zero. It shows `$0.00` in the Actual colum
 
 The report shows `N/A` for the variance percentage when the plan is zero. This prevents division by zero. It still calculates the amount variance as `Actual - Plan`.
 
+### Fiscal-year range
+
+The report has previous and next fiscal-year controls, so no fixed year list requires maintenance. Fiscal years use the calendar year from January through December. A user can still select start and end months directly; the fiscal-year control then shows **Custom range**.
+
 ### Monthly locking
 
 Locks apply to one calendar month and to one user. A locked month makes its plans and actuals read-only. The interface disables the related inputs, and the API rejects write requests with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
@@ -87,7 +91,7 @@ The import checks the month, category, and amount in each row. Category names ar
 
 ## Assumptions and tradeoffs
 
-- The application uses calendar months in `YYYY-MM` format. It does not support fiscal periods.
+- The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December; custom fiscal-year start months are out of scope.
 - All amounts use USD. The database stores nonnegative amounts as whole cents to prevent floating-point rounding errors.
 - Marketing, Payroll, and Tools are a fixed seed list. Category CRUD is out of scope for this version.
 - Each user can have one plan for each category and month. A user can add multiple actual entries, and the report adds them together.
