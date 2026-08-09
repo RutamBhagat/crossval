@@ -65,6 +65,9 @@ export function useActuals() {
     mutationFn: createActual,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({
+        queryKey: ["reports", session?.user.id],
+      });
       toast.success("Actual spend logged");
     },
     onError: (error) => toast.error(error.message),

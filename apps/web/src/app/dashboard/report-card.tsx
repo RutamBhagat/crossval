@@ -45,9 +45,8 @@ import {
 
 import { MonthPicker } from "./month-picker";
 import { MonthlyVarianceChart } from "./monthly-variance-chart";
-import { buildReportRows, filterReportRows, type ReportRow } from "./report";
-import { useActuals } from "./use-actuals";
-import { usePlans } from "./use-plans";
+import type { ReportRow } from "./report";
+import { useReport } from "./use-report";
 
 type SortKey =
   | "month"
@@ -122,26 +121,20 @@ function SortableTableHead({
 }
 
 export function ReportCard() {
-  const { plans, isLoading: plansAreLoading } = usePlans();
-  const { actuals, isLoading: actualsAreLoading } = useActuals();
-  const [range, setRange] = useState<{ start?: string; end?: string }>({});
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const [range, setRange] = useState({
+    start: `${today.getFullYear()}-01`,
+    end: currentMonth,
+  });
   const [sort, setSort] = useState<SortState>({
     key: "month",
     direction: "descending",
   });
-  const allRows = buildReportRows(plans, actuals);
-  const availableMonths = Array.from(new Set(allRows.map((row) => row.month))).sort();
-  const today = new Date();
-  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const defaultStart = availableMonths[0] ?? currentMonth;
-  const defaultEnd = availableMonths.at(-1) ?? currentMonth;
-  const startMonth = range.start ?? defaultStart;
-  const endMonth = range.end ?? defaultEnd;
-  const rows = sortReportRows(
-    filterReportRows(allRows, startMonth, endMonth),
-    sort,
-  );
-  const isLoading = plansAreLoading || actualsAreLoading;
+  const { rows: reportRows, isLoading } = useReport(range.start, range.end);
+  const rows = sortReportRows(reportRows, sort);
+  const startMonth = range.start;
+  const endMonth = range.end;
 
   function handleSort(column: SortKey) {
     setSort((current) => ({
@@ -174,7 +167,7 @@ export function ReportCard() {
               onValueChange={(start) =>
                 setRange((current) => ({
                   start,
-                  end: (current.end ?? defaultEnd) < start ? start : current.end,
+                  end: current.end < start ? start : current.end,
                 }))
               }
               value={startMonth}
@@ -187,7 +180,7 @@ export function ReportCard() {
               name="endMonth"
               onValueChange={(end) =>
                 setRange((current) => ({
-                  start: (current.start ?? defaultStart) > end ? end : current.start,
+                  start: current.start > end ? end : current.start,
                   end,
                 }))
               }
@@ -209,12 +202,10 @@ export function ReportCard() {
                 <ChartNoAxesColumnIncreasing />
               </EmptyMedia>
               <EmptyTitle>
-                {allRows.length === 0 ? "No report rows yet" : "No rows in this date range"}
+                No rows in this date range
               </EmptyTitle>
               <EmptyDescription>
-                {allRows.length === 0
-                  ? "Save a monthly target to create a report row."
-                  : "Select a range that includes months with plan data."}
+                Save a monthly target in the selected range to create a report row.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

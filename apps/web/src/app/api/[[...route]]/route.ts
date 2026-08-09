@@ -6,6 +6,7 @@ import { handle } from "hono/vercel";
 import { actualsRouter } from "@/server/routers/actuals";
 import { locksRouter } from "@/server/routers/locks";
 import { plansRouter } from "@/server/routers/plans";
+import { reportsRouter } from "@/server/routers/reports";
 
 const app = new Hono().basePath("/api");
 
@@ -14,6 +15,7 @@ app.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/actuals", actualsRouter);
 app.route("/locks", locksRouter);
 app.route("/plans", plansRouter);
+app.route("/reports", reportsRouter);
 
 app.get("/", (c) => {
   return c.text("OK");

@@ -107,10 +107,10 @@ Make these changes before production use:
 
 The current schema has these main compound indexes:
 
-- Plans: unique `{ userId, categoryId, month }`
+- Plans: unique `{ userId, categoryId, month }` and report range `{ userId, month, categoryId }`
 - Actuals: `{ userId, month, categoryId }`
 - Period locks: unique `{ userId, month }`
 
-For larger datasets, report requests would filter by `userId` and a bounded month range in MongoDB. A MongoDB aggregation would group actual entries by month and category before it returns data to the application. This prevents the application from loading all entries for a user.
+Report requests filter by `userId` and a bounded month range in MongoDB. A MongoDB aggregation groups actual entries by month and category. The server joins these totals with the plans before it returns report rows. This prevents the browser from loading all entries for a user.
 
-I would add a `{ userId, month, categoryId }` plan index for range reports. I would keep the existing unique plan index to enforce one plan for each category and month. Long detail lists would use cursor pagination. Query execution plans and production metrics would determine whether more indexes are necessary.
+The unique plan index enforces one plan for each category and month. Long detail lists would use cursor pagination. Query execution plans and production metrics would determine whether more indexes are necessary.

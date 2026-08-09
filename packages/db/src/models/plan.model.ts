@@ -32,6 +32,7 @@ const planSchema = new Schema(
 );
 
 planSchema.index({ userId: 1, categoryId: 1, month: 1 }, { unique: true });
+planSchema.index({ userId: 1, month: 1, categoryId: 1 });
 
 const Plan = mongoose.models.Plan ?? mongoose.model("Plan", planSchema);
 
