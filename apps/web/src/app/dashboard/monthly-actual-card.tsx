@@ -183,41 +183,35 @@ export function MonthlyActualCard() {
           ) : (
             <ul className="divide-y" aria-label="Logged actual spend grouped by month">
               {actualGroups.map((group) => {
-                const entryLabel = group.entries.length === 1 ? "entry" : "entries";
-
                 return (
                   <li className="py-3" key={`${group.categoryId}:${group.month}`}>
                     <Collapsible>
                       <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-medium">
-                            {getCategoryName(group.categoryId)}
-                          </p>
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {group.month}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className="font-mono text-xs font-medium tabular-nums">
-                            {formatCurrency(group.totalCents)}
-                          </span>
-                          <CollapsibleTrigger
-                            render={
-                              <Button
-                                aria-label={`View ${group.entries.length} ${entryLabel} for ${getCategoryName(group.categoryId)} in ${group.month}`}
-                                className="group"
-                                size="sm"
-                                variant="ghost"
-                              />
-                            }
-                          >
-                            {group.entries.length} {entryLabel}
-                            <ChevronDown
-                              className="transition-transform group-data-panel-open:rotate-180"
-                              data-icon="inline-end"
+                        <CollapsibleTrigger
+                          render={
+                            <Button
+                              aria-label={`View entries for ${getCategoryName(group.categoryId)} in ${group.month}`}
+                              className="group h-auto min-w-0 shrink justify-start gap-2 p-0 text-left hover:bg-transparent"
+                              variant="ghost"
                             />
-                          </CollapsibleTrigger>
-                        </div>
+                          }
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-xs font-medium">
+                              {getCategoryName(group.categoryId)}
+                            </span>
+                            <span className="block font-mono text-xs text-muted-foreground">
+                              {group.month}
+                            </span>
+                          </span>
+                          <ChevronDown
+                            className="transition-transform group-data-panel-open:rotate-180"
+                            data-icon="inline-end"
+                          />
+                        </CollapsibleTrigger>
+                        <span className="shrink-0 font-mono text-xs font-medium tabular-nums">
+                          {formatCurrency(group.totalCents)}
+                        </span>
                       </div>
                       <CollapsibleContent>
                         <Separator className="mt-2" />
