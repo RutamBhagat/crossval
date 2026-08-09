@@ -1,3 +1,4 @@
+import { MonthLockCard } from "./month-lock-card";
 import { MonthlyActualCard } from "./monthly-actual-card";
 import { MonthlyPlanCard } from "./monthly-plan-card";
 import { ReportCard } from "./report-card";
@@ -22,6 +23,8 @@ export default function Dashboard() {
           <MonthlyActualCard />
         </div>
       </section>
+
+      <MonthLockCard />
 
       <ReportCard />
     </div>

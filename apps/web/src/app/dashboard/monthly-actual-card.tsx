@@ -28,12 +28,15 @@ import {
 import { Separator } from "@crossval/ui/components/separator";
 import { Skeleton } from "@crossval/ui/components/skeleton";
 import { ChevronDown, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
 import { formatCurrency } from "@/lib/formatters";
 
+import { MonthLockStatus } from "./month-lock-status";
 import { MonthPicker } from "./month-picker";
 import { useActuals } from "./use-actuals";
+import { useLocks } from "./use-locks";
 
 type ActualEntry = {
   id: string;
@@ -49,6 +52,11 @@ type ActualGroup = {
   totalCents: number;
   entries: ActualEntry[];
 };
+
+function currentMonth() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+}
 
 function groupActuals(actuals: ActualEntry[]) {
   const groups = new Map<string, ActualGroup>();
@@ -74,8 +82,11 @@ function groupActuals(actuals: ActualEntry[]) {
 }
 
 export function MonthlyActualCard() {
+  const [month, setMonth] = useState(currentMonth);
   const { actuals, isLoading, isSaving, createActual } = useActuals();
+  const { locks, isLoading: locksAreLoading } = useLocks();
   const actualGroups = groupActuals(actuals);
+  const monthIsLocked = locks.some((lock) => lock.month === month);
 
   return (
     <Card className="h-full scroll-mt-20 shadow-none" id="actual-spend">
@@ -105,11 +116,17 @@ export function MonthlyActualCard() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="actual-month">Month</FieldLabel>
-                <MonthPicker id="actual-month" name="month" />
+                <MonthPicker
+                  id="actual-month"
+                  name="month"
+                  onValueChange={setMonth}
+                  value={month}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="actual-amount">Amount spent</FieldLabel>
                 <Input
+                  disabled={monthIsLocked}
                   id="actual-amount"
                   inputMode="decimal"
                   min="0"
@@ -126,6 +143,7 @@ export function MonthlyActualCard() {
                 <FieldLabel htmlFor="actual-category">Category</FieldLabel>
                 <Select
                   defaultValue={categories[0]?.id}
+                  disabled={monthIsLocked}
                   items={categoryOptions}
                   name="categoryId"
                   required
@@ -147,6 +165,7 @@ export function MonthlyActualCard() {
               <Field>
                 <FieldLabel htmlFor="actual-note">Note (optional)</FieldLabel>
                 <Input
+                  disabled={monthIsLocked}
                   id="actual-note"
                   maxLength={500}
                   name="note"
@@ -154,8 +173,18 @@ export function MonthlyActualCard() {
                 />
               </Field>
             </div>
-            <div className="flex justify-end">
-              <Button disabled={isSaving} type="submit">
+            <div className="flex items-center justify-between gap-4">
+              {monthIsLocked && (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <MonthLockStatus locked />
+                  This month is read-only.
+                </p>
+              )}
+              <Button
+                className="ml-auto"
+                disabled={isSaving || locksAreLoading || monthIsLocked}
+                type="submit"
+              >
                 {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
                 Log actual
               </Button>
@@ -200,7 +229,10 @@ export function MonthlyActualCard() {
                             <span className="block truncate text-xs font-medium">
                               {getCategoryName(group.categoryId)}
                             </span>
-                            <span className="block font-mono text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+                              <MonthLockStatus
+                                locked={locks.some((lock) => lock.month === group.month)}
+                              />
                               {group.month}
                             </span>
                           </span>
