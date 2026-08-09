@@ -22,7 +22,17 @@ import {
 } from "@crossval/ui/components/select";
 import { Separator } from "@crossval/ui/components/separator";
 import { Skeleton } from "@crossval/ui/components/skeleton";
-import { Loader2 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@crossval/ui/components/table";
+import { cn } from "@crossval/ui/lib/utils";
+import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
@@ -34,13 +44,59 @@ import { useLocks } from "./use-locks";
 import { useCategories } from "./use-categories";
 import { usePlans } from "./use-plans";
 
+type PlanSortKey = "month" | "category" | "amount";
+type SortDirection = "ascending" | "descending";
+
 function currentMonth() {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function PlanTableHead({
+  align = "left",
+  column,
+  label,
+  onSort,
+  sort,
+}: {
+  align?: "left" | "right";
+  column: PlanSortKey;
+  label: string;
+  onSort: (column: PlanSortKey) => void;
+  sort: { key: PlanSortKey; direction: SortDirection };
+}) {
+  const isActive = sort.key === column;
+  const SortIcon = isActive
+    ? sort.direction === "ascending"
+      ? ArrowUp
+      : ArrowDown
+    : ChevronsUpDown;
+
+  return (
+    <TableHead
+      aria-sort={isActive ? sort.direction : "none"}
+      className={cn(align === "right" && "text-right")}
+    >
+      <Button
+        className={cn("-mx-2", align === "right" && "ml-auto")}
+        onClick={() => onSort(column)}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {label}
+        <SortIcon data-icon="inline-end" />
+      </Button>
+    </TableHead>
+  );
+}
+
 export function MonthlyPlanCard() {
   const [month, setMonth] = useState(currentMonth);
+  const [sort, setSort] = useState<{
+    key: PlanSortKey;
+    direction: SortDirection;
+  }>({ key: "month", direction: "descending" });
   const { categories } = useCategories();
   const categoryOptions = categories.map((category) => ({
     label: category.name,
@@ -49,6 +105,38 @@ export function MonthlyPlanCard() {
   const { plans, isLoading, isSaving, savePlan } = usePlans();
   const { locks, isLoading: locksAreLoading } = useLocks();
   const monthIsLocked = locks.some((lock) => lock.month === month);
+  const visiblePlans = [...plans]
+    .sort((left, right) => {
+      const leftValue =
+        sort.key === "category"
+          ? getCategoryName(left.categoryId)
+          : sort.key === "amount"
+            ? left.amountCents
+            : left.month;
+      const rightValue =
+        sort.key === "category"
+          ? getCategoryName(right.categoryId)
+          : sort.key === "amount"
+            ? right.amountCents
+            : right.month;
+      const comparison =
+        typeof leftValue === "string" && typeof rightValue === "string"
+          ? leftValue.localeCompare(rightValue)
+          : Number(leftValue) - Number(rightValue);
+
+      return sort.direction === "ascending" ? comparison : -comparison;
+    })
+    .slice(0, 10);
+
+  function handleSort(column: PlanSortKey) {
+    setSort((current) => ({
+      key: column,
+      direction:
+        current.key === column && current.direction === "ascending"
+          ? "descending"
+          : "ascending",
+    }));
+  }
 
   return (
     <Card className="h-full scroll-mt-20 shadow-none" id="monthly-plan">
@@ -156,27 +244,64 @@ export function MonthlyPlanCard() {
           ) : plans.length === 0 ? (
             <p className="py-3 text-xs text-muted-foreground">No monthly targets yet.</p>
           ) : (
-            <ul className="divide-y" aria-label="Saved monthly targets">
-              {plans.map((plan) => (
-                <li
-                  className="flex items-center justify-between gap-4 py-3"
-                  key={plan.id}
-                >
-                  <div>
-                    <p className="text-xs font-medium">{getCategoryName(plan.categoryId)}</p>
-                    <p className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-                      <MonthLockStatus
-                        locked={locks.some((lock) => lock.month === plan.month)}
-                      />
-                      {plan.month}
-                    </p>
-                  </div>
-                  <span className="font-mono text-xs font-medium tabular-nums">
-                    {formatCurrency(plan.amountCents)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Table aria-label="Saved monthly targets">
+              <TableHeader>
+                <TableRow>
+                  <PlanTableHead
+                    column="month"
+                    label="Month"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <PlanTableHead
+                    column="category"
+                    label="Category"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <PlanTableHead
+                    align="right"
+                    column="amount"
+                    label="Target"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visiblePlans.map((plan) => {
+                  const isLocked = locks.some((lock) => lock.month === plan.month);
+
+                  return (
+                    <TableRow key={plan.id}>
+                      <TableCell className="font-mono text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <MonthLockStatus locked={isLocked} />
+                          {plan.month}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {getCategoryName(plan.categoryId)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-medium tabular-nums">
+                        {formatCurrency(plan.amountCents)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+          {plans.length > 10 && (
+            <div className="mt-3 flex justify-end border-t pt-3">
+              <Button
+                render={<Link href="/dashboard/reports" />}
+                size="sm"
+                variant="ghost"
+              >
+                View full report
+              </Button>
+            </div>
           )}
         </section>
       </CardContent>

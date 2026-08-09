@@ -9,11 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@crossval/ui/components/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@crossval/ui/components/collapsible";
 import { Field, FieldGroup, FieldLabel } from "@crossval/ui/components/field";
 import { Input } from "@crossval/ui/components/input";
 import {
@@ -26,7 +21,17 @@ import {
 } from "@crossval/ui/components/select";
 import { Separator } from "@crossval/ui/components/separator";
 import { Skeleton } from "@crossval/ui/components/skeleton";
-import { ChevronDown, Loader2, Upload } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@crossval/ui/components/table";
+import { cn } from "@crossval/ui/lib/utils";
+import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2, Upload } from "lucide-react";
+import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
@@ -46,43 +51,59 @@ type ActualEntry = {
   note?: string;
 };
 
-type ActualGroup = {
-  categoryId: string;
-  month: string;
-  totalCents: number;
-  entries: ActualEntry[];
-};
+type ActualSortKey = "month" | "category" | "note" | "amount";
+type SortDirection = "ascending" | "descending";
 
 function currentMonth() {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function groupActuals(actuals: ActualEntry[]) {
-  const groups = new Map<string, ActualGroup>();
+function ActualTableHead({
+  align = "left",
+  column,
+  label,
+  onSort,
+  sort,
+}: {
+  align?: "left" | "right";
+  column: ActualSortKey;
+  label: string;
+  onSort: (column: ActualSortKey) => void;
+  sort: { key: ActualSortKey; direction: SortDirection };
+}) {
+  const isActive = sort.key === column;
+  const SortIcon = isActive
+    ? sort.direction === "ascending"
+      ? ArrowUp
+      : ArrowDown
+    : ChevronsUpDown;
 
-  for (const actual of actuals) {
-    const key = `${actual.categoryId}:${actual.month}`;
-    const group = groups.get(key);
-
-    if (group) {
-      group.totalCents += actual.amountCents;
-      group.entries.push(actual);
-    } else {
-      groups.set(key, {
-        categoryId: actual.categoryId,
-        month: actual.month,
-        totalCents: actual.amountCents,
-        entries: [actual],
-      });
-    }
-  }
-
-  return Array.from(groups.values());
+  return (
+    <TableHead
+      aria-sort={isActive ? sort.direction : "none"}
+      className={cn(align === "right" && "text-right")}
+    >
+      <Button
+        className={cn("-mx-2", align === "right" && "ml-auto")}
+        onClick={() => onSort(column)}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {label}
+        <SortIcon data-icon="inline-end" />
+      </Button>
+    </TableHead>
+  );
 }
 
 export function MonthlyActualCard() {
   const [month, setMonth] = useState(currentMonth);
+  const [sort, setSort] = useState<{
+    key: ActualSortKey;
+    direction: SortDirection;
+  }>({ key: "month", direction: "descending" });
   const { categories } = useCategories();
   const categoryOptions = categories.map((category) => ({
     label: category.name,
@@ -92,8 +113,43 @@ export function MonthlyActualCard() {
     useActuals();
   const importInputRef = useRef<HTMLInputElement>(null);
   const { locks, isLoading: locksAreLoading } = useLocks();
-  const actualGroups = groupActuals(actuals);
+  const visibleActuals = [...actuals]
+    .sort((left, right) => {
+      const leftValue =
+        sort.key === "category"
+          ? getCategoryName(left.categoryId)
+          : sort.key === "note"
+            ? left.note || ""
+            : sort.key === "amount"
+              ? left.amountCents
+              : left.month;
+      const rightValue =
+        sort.key === "category"
+          ? getCategoryName(right.categoryId)
+          : sort.key === "note"
+            ? right.note || ""
+            : sort.key === "amount"
+              ? right.amountCents
+              : right.month;
+      const comparison =
+        typeof leftValue === "string" && typeof rightValue === "string"
+          ? leftValue.localeCompare(rightValue)
+          : Number(leftValue) - Number(rightValue);
+
+      return sort.direction === "ascending" ? comparison : -comparison;
+    })
+    .slice(0, 10);
   const monthIsLocked = locks.some((lock) => lock.month === month);
+
+  function handleSort(column: ActualSortKey) {
+    setSort((current) => ({
+      key: column,
+      direction:
+        current.key === column && current.direction === "ascending"
+          ? "descending"
+          : "ascending",
+    }));
+  }
 
   return (
     <Card className="h-full scroll-mt-20 shadow-none" id="actual-spend">
@@ -247,64 +303,74 @@ export function MonthlyActualCard() {
           ) : actuals.length === 0 ? (
             <p className="py-3 text-xs text-muted-foreground">No actual spend logged yet.</p>
           ) : (
-            <ul className="divide-y" aria-label="Logged actual spend grouped by month">
-              {actualGroups.map((group) => {
-                return (
-                  <li className="py-3" key={`${group.categoryId}:${group.month}`}>
-                    <Collapsible>
-                      <div className="flex items-center justify-between gap-4">
-                        <CollapsibleTrigger
-                          render={
-                            <Button
-                              aria-label={`View entries for ${getCategoryName(group.categoryId)} in ${group.month}`}
-                              className="group h-auto min-w-0 shrink justify-start gap-2 p-0 text-left hover:bg-transparent"
-                              variant="ghost"
-                            />
-                          }
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate text-xs font-medium">
-                              {getCategoryName(group.categoryId)}
-                            </span>
-                            <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-                              <MonthLockStatus
-                                locked={locks.some((lock) => lock.month === group.month)}
-                              />
-                              {group.month}
-                            </span>
-                          </span>
-                          <ChevronDown
-                            className="transition-transform group-data-panel-open:rotate-180"
-                            data-icon="inline-end"
-                          />
-                        </CollapsibleTrigger>
-                        <span className="shrink-0 font-mono text-xs font-medium tabular-nums">
-                          {formatCurrency(group.totalCents)}
-                        </span>
-                      </div>
-                      <CollapsibleContent>
-                        <Separator className="mt-2" />
-                        <ul className="flex flex-col gap-2 pt-2" aria-label="Spend entries">
-                          {group.entries.map((actual) => (
-                            <li
-                              className="flex items-start justify-between gap-4 px-3 py-1"
-                              key={actual.id}
-                            >
-                              <p className="min-w-0 truncate text-xs text-muted-foreground">
-                                {actual.note || "No note"}
-                              </p>
-                              <span className="shrink-0 font-mono text-xs tabular-nums">
-                                {formatCurrency(actual.amountCents)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </li>
-                );
-              })}
-            </ul>
+            <Table aria-label="Logged actual spend">
+              <TableHeader>
+                <TableRow>
+                  <ActualTableHead
+                    column="month"
+                    label="Month"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <ActualTableHead
+                    column="category"
+                    label="Category"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <ActualTableHead
+                    column="note"
+                    label="Note"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <ActualTableHead
+                    align="right"
+                    column="amount"
+                    label="Actual"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleActuals.map((actual) => (
+                  <TableRow key={actual.id}>
+                    <TableCell className="font-mono text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <MonthLockStatus
+                          locked={locks.some((lock) => lock.month === actual.month)}
+                        />
+                        {actual.month}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {getCategoryName(actual.categoryId)}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-44 truncate text-muted-foreground"
+                      title={actual.note || "No note"}
+                    >
+                      {actual.note || "No note"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium tabular-nums">
+                      {formatCurrency(actual.amountCents)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {actuals.length > 10 && (
+            <div className="mt-3 flex justify-end border-t pt-3">
+              <Button
+                render={<Link href="/dashboard/reports" />}
+                size="sm"
+                variant="ghost"
+              >
+                View full report
+              </Button>
+            </div>
           )}
         </section>
       </CardContent>
