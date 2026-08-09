@@ -13,7 +13,7 @@ plansRouter.use("*", requireAuth);
 
 plansRouter.get("/", async (c) => {
   const plans = await Plan.find({ userId: c.get("userId") })
-    .sort({ month: 1, categoryId: 1 })
+    .sort({ month: -1, categoryId: 1 })
     .lean();
 
   return c.json({

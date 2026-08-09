@@ -13,7 +13,7 @@ actualsRouter.use("*", requireAuth);
 
 actualsRouter.get("/", async (c) => {
   const actuals = await Actual.find({ userId: c.get("userId") })
-    .sort({ month: 1, categoryId: 1, createdAt: 1 })
+    .sort({ month: -1, categoryId: 1, createdAt: 1 })
     .lean();
 
   return c.json({

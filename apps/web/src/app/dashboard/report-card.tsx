@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@crossval/ui/components/badge";
+import { Button } from "@crossval/ui/components/button";
 import {
   Card,
   CardAction,
@@ -26,7 +27,13 @@ import {
   TableHeader,
   TableRow,
 } from "@crossval/ui/components/table";
-import { ChartNoAxesColumnIncreasing } from "lucide-react";
+import { cn } from "@crossval/ui/lib/utils";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChartNoAxesColumnIncreasing,
+  ChevronsUpDown,
+} from "lucide-react";
 import { useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
@@ -37,14 +44,90 @@ import {
 } from "@/lib/formatters";
 
 import { MonthPicker } from "./month-picker";
-import { buildReportRows, filterReportRows } from "./report";
+import { buildReportRows, filterReportRows, type ReportRow } from "./report";
 import { useActuals } from "./use-actuals";
 import { usePlans } from "./use-plans";
+
+type SortKey =
+  | "month"
+  | "categoryId"
+  | "planCents"
+  | "actualCents"
+  | "varianceCents"
+  | "variancePercent";
+type SortDirection = "ascending" | "descending";
+type SortState = { key: SortKey; direction: SortDirection };
+
+function sortReportRows(rows: ReportRow[], sort: SortState) {
+  return [...rows].sort((left, right) => {
+    const leftValue =
+      sort.key === "categoryId"
+        ? getCategoryName(left.categoryId)
+        : left[sort.key];
+    const rightValue =
+      sort.key === "categoryId"
+        ? getCategoryName(right.categoryId)
+        : right[sort.key];
+
+    if (leftValue === null) return rightValue === null ? 0 : 1;
+    if (rightValue === null) return -1;
+
+    const comparison =
+      typeof leftValue === "string" && typeof rightValue === "string"
+        ? leftValue.localeCompare(rightValue)
+        : Number(leftValue) - Number(rightValue);
+
+    return sort.direction === "ascending" ? comparison : -comparison;
+  });
+}
+
+function SortableTableHead({
+  align = "left",
+  column,
+  label,
+  onSort,
+  sort,
+}: {
+  align?: "left" | "right";
+  column: SortKey;
+  label: string;
+  onSort: (column: SortKey) => void;
+  sort: SortState;
+}) {
+  const isActive = sort.key === column;
+  const SortIcon = isActive
+    ? sort.direction === "ascending"
+      ? ArrowUp
+      : ArrowDown
+    : ChevronsUpDown;
+
+  return (
+    <TableHead
+      aria-sort={isActive ? sort.direction : "none"}
+      className={cn(align === "right" && "text-right")}
+    >
+      <Button
+        className={cn("-mx-2", align === "right" && "ml-auto")}
+        onClick={() => onSort(column)}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {label}
+        <SortIcon data-icon="inline-end" />
+      </Button>
+    </TableHead>
+  );
+}
 
 export function ReportCard() {
   const { plans, isLoading: plansAreLoading } = usePlans();
   const { actuals, isLoading: actualsAreLoading } = useActuals();
   const [range, setRange] = useState<{ start?: string; end?: string }>({});
+  const [sort, setSort] = useState<SortState>({
+    key: "month",
+    direction: "descending",
+  });
   const allRows = buildReportRows(plans, actuals);
   const availableMonths = Array.from(new Set(allRows.map((row) => row.month))).sort();
   const today = new Date();
@@ -53,8 +136,21 @@ export function ReportCard() {
   const defaultEnd = availableMonths.at(-1) ?? currentMonth;
   const startMonth = range.start ?? defaultStart;
   const endMonth = range.end ?? defaultEnd;
-  const rows = filterReportRows(allRows, startMonth, endMonth);
+  const rows = sortReportRows(
+    filterReportRows(allRows, startMonth, endMonth),
+    sort,
+  );
   const isLoading = plansAreLoading || actualsAreLoading;
+
+  function handleSort(column: SortKey) {
+    setSort((current) => ({
+      key: column,
+      direction:
+        current.key === column && current.direction === "ascending"
+          ? "descending"
+          : "ascending",
+    }));
+  }
 
   return (
     <Card className="scroll-mt-20 shadow-none" id="variance-report">
@@ -125,22 +221,56 @@ export function ReportCard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Month</TableHead>
-                <TableHead className="text-right">Plan</TableHead>
-                <TableHead className="text-right">Actual</TableHead>
-                <TableHead className="text-right">Variance</TableHead>
-                <TableHead className="text-right">Variance %</TableHead>
+                <SortableTableHead
+                  column="month"
+                  label="Month"
+                  onSort={handleSort}
+                  sort={sort}
+                />
+                <SortableTableHead
+                  column="categoryId"
+                  label="Category"
+                  onSort={handleSort}
+                  sort={sort}
+                />
+                <SortableTableHead
+                  align="right"
+                  column="planCents"
+                  label="Plan"
+                  onSort={handleSort}
+                  sort={sort}
+                />
+                <SortableTableHead
+                  align="right"
+                  column="actualCents"
+                  label="Actual"
+                  onSort={handleSort}
+                  sort={sort}
+                />
+                <SortableTableHead
+                  align="right"
+                  column="varianceCents"
+                  label="Variance"
+                  onSort={handleSort}
+                  sort={sort}
+                />
+                <SortableTableHead
+                  align="right"
+                  column="variancePercent"
+                  label="Variance %"
+                  onSort={handleSort}
+                  sort={sort}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={`${row.categoryId}-${row.month}`}>
-                  <TableCell className="font-medium">
-                    {getCategoryName(row.categoryId)}
-                  </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {row.month}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {getCategoryName(row.categoryId)}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums">
                     {formatCurrency(row.planCents)}
