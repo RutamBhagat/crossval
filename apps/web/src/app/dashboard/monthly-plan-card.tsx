@@ -129,10 +129,9 @@ export function MonthlyPlanCard() {
     <Card className="h-full scroll-mt-20 shadow-none" id="monthly-plan">
       <CardHeader className="border-b">
         <CardTitle>Set a monthly plan</CardTitle>
-        <CardDescription>Choose a category, month, and target amount.</CardDescription>
-        <CardAction>
-          <Badge variant="outline">Plan</Badge>
-        </CardAction>
+        <CardDescription>
+          Choose a category, month, and target amount.
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <form
@@ -208,7 +207,9 @@ export function MonthlyPlanCard() {
                 disabled={isSaving || locksAreLoading || monthIsLocked}
                 type="submit"
               >
-                {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
+                {isSaving && (
+                  <Loader2 className="animate-spin" data-icon="inline-start" />
+                )}
                 Save target
               </Button>
             </div>
@@ -221,7 +222,9 @@ export function MonthlyPlanCard() {
             <h3 id="saved-targets-heading" className="text-xs font-medium">
               Saved targets
             </h3>
-            <span className="font-mono text-xs text-muted-foreground">{total}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {total}
+            </span>
           </div>
           {isLoading ? (
             <div className="flex flex-col gap-2" aria-label="Loading targets">
@@ -229,7 +232,9 @@ export function MonthlyPlanCard() {
               <Skeleton className="h-8 w-4/5" />
             </div>
           ) : plans.length === 0 ? (
-            <p className="py-3 text-xs text-muted-foreground">No monthly targets yet.</p>
+            <p className="py-3 text-xs text-muted-foreground">
+              No monthly targets yet.
+            </p>
           ) : (
             <Table aria-label="Saved monthly targets">
               <TableHeader>
@@ -257,7 +262,9 @@ export function MonthlyPlanCard() {
               </TableHeader>
               <TableBody>
                 {visiblePlans.map((plan) => {
-                  const isLocked = locks.some((lock) => lock.month === plan.month);
+                  const isLocked = locks.some(
+                    (lock) => lock.month === plan.month,
+                  );
 
                   return (
                     <TableRow key={plan.id}>

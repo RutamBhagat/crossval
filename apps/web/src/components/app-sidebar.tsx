@@ -14,7 +14,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@crossval/ui/components/sidebar";
-import { ChartNoAxesColumnIncreasing, LayoutDashboard } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, LockKeyhole, Rows3 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,11 +22,16 @@ import { usePathname } from "next/navigation";
 import UserMenu from "./user-menu";
 
 const navigation = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Ledger", href: "/dashboard", icon: Rows3 },
   {
     label: "Reports",
     href: "/dashboard/reports",
     icon: ChartNoAxesColumnIncreasing,
+  },
+  {
+    label: "Period close",
+    href: "/dashboard/periods",
+    icon: LockKeyhole,
   },
 ] as const;
 
