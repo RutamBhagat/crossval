@@ -81,18 +81,24 @@ export default function UserMenu({ placement = "header" }: UserMenuProps) {
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={<SidebarMenuButton size="lg" tooltip={session.user.name} />}
+              render={
+                <SidebarMenuButton
+                  className="group-data-[collapsible=icon]:justify-center"
+                  size="lg"
+                  tooltip={session.user.name}
+                />
+              }
             >
               <UserRound />
-              <div className="grid min-w-0 flex-1 text-left leading-tight">
+              <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">{session.user.name}</span>
                 <span className="truncate text-sidebar-foreground/65">
                   {session.user.email}
                 </span>
               </div>
-              <ChevronUp className="ml-auto" />
+              <ChevronUp className="ml-auto group-data-[collapsible=icon]:hidden" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-56" side="top">
+            <DropdownMenuContent align="end" side="top">
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="flex flex-col gap-0.5">
                   <span className="font-medium text-foreground">{session.user.name}</span>
