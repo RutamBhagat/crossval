@@ -6,26 +6,57 @@ import { Hono } from "hono";
 import { amountToCents } from "@/server/money";
 import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
 
-import { planInputSchema } from "./schema";
+import { planInputSchema, plansQuerySchema } from "./schema";
 
 const plansRouter = new Hono<{ Variables: AuthVariables }>();
 
 plansRouter.use("*", requireAuth);
 
-plansRouter.get("/", async (c) => {
-  const plans = await Plan.find({ userId: c.get("userId") })
-    .sort({ month: -1, categoryId: 1 })
-    .lean();
+plansRouter.get(
+  "/",
+  zValidator("query", plansQuerySchema, (result, c) => {
+    if (!result.success) {
+      return c.json(
+        { error: result.error.issues[0]?.message ?? "Invalid query" },
+        400,
+      );
+    }
+  }),
+  async (c) => {
+    const { direction, limit, offset, sort } = c.req.valid("query");
+    const filter = { userId: c.get("userId") };
+    const sortFields = {
+      month: "month",
+      category: "categoryId",
+      amount: "amountCents",
+    } as const;
+    const sortDirection = direction === "ascending" ? 1 : -1;
+    const databaseSort: Record<string, 1 | -1> = {
+      [sortFields[sort]]: sortDirection,
+      _id: 1,
+    };
+    const [plans, total] = await Promise.all([
+      Plan.find(filter)
+        .sort(databaseSort)
+        .skip(offset)
+        .limit(limit)
+        .lean(),
+      Plan.countDocuments(filter),
+    ]);
 
-  return c.json({
-    plans: plans.map((plan) => ({
-      id: plan._id.toString(),
-      categoryId: plan.categoryId,
-      month: plan.month,
-      amountCents: plan.amountCents,
-    })),
-  });
-});
+    return c.json({
+      plans: plans.map((plan) => ({
+        id: plan._id.toString(),
+        categoryId: plan.categoryId,
+        month: plan.month,
+        amountCents: plan.amountCents,
+      })),
+      total,
+      offset,
+      limit,
+    });
+  },
+);
 
 plansRouter.put(
   "/",

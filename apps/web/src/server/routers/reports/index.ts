@@ -3,10 +3,13 @@ import { Plan } from "@crossval/db/models/plan.model";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
+import { getCategoryName } from "@/lib/categories";
 import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
 import {
+  buildMonthlyVariance,
   buildReportRows,
   type MonthlyActualTotal,
+  type ReportRow,
 } from "@/server/report";
 
 import { reportQuerySchema } from "./schema";
@@ -31,7 +34,7 @@ reportsRouter.get(
     }
   }),
   async (c) => {
-    const { start, end } = c.req.valid("query");
+    const { direction, end, limit, offset, sort, start } = c.req.valid("query");
     const userId = c.get("userId");
     const month = { $gte: start, $lte: end };
 
@@ -58,7 +61,42 @@ reportsRouter.get(
       }),
     );
 
-    return c.json({ reports: buildReportRows(plans, actualTotals) });
+    const reports = buildReportRows(plans, actualTotals);
+
+    // Keep the unpaginated response for API clients that do not request a page.
+    if (c.req.query("offset") === undefined && c.req.query("limit") === undefined) {
+      return c.json({ reports });
+    }
+
+    const valueFor = (row: ReportRow) => {
+      if (sort === "category") return getCategoryName(row.categoryId);
+      if (sort === "target") return row.planCents;
+      return row.month;
+    };
+    const sortedReports = [...reports].sort((left, right) => {
+      const leftValue = valueFor(left);
+      const rightValue = valueFor(right);
+      const comparison =
+        typeof leftValue === "string" && typeof rightValue === "string"
+          ? leftValue.localeCompare(rightValue)
+          : Number(leftValue) - Number(rightValue);
+
+      if (comparison !== 0) {
+        return direction === "ascending" ? comparison : -comparison;
+      }
+
+      return `${left.month}:${left.categoryId}`.localeCompare(
+        `${right.month}:${right.categoryId}`,
+      );
+    });
+
+    return c.json({
+      reports: sortedReports.slice(offset, offset + limit),
+      monthlyVariance: buildMonthlyVariance(reports),
+      total: reports.length,
+      offset,
+      limit,
+    });
   },
 );
 

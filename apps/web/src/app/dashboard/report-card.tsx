@@ -45,41 +45,14 @@ import {
 
 import { MonthPicker } from "./month-picker";
 import { MonthlyVarianceChart } from "./monthly-variance-chart";
-import type { ReportRow } from "./report";
-import { useReport } from "./use-report";
+import { PaginationControls } from "./pagination-controls";
+import {
+  type ReportSortDirection,
+  type ReportSortKey,
+  useReport,
+} from "./use-report";
 
-type SortKey =
-  | "month"
-  | "categoryId"
-  | "planCents"
-  | "actualCents"
-  | "varianceCents"
-  | "variancePercent";
-type SortDirection = "ascending" | "descending";
-type SortState = { key: SortKey; direction: SortDirection };
-
-function sortReportRows(rows: ReportRow[], sort: SortState) {
-  return [...rows].sort((left, right) => {
-    const leftValue =
-      sort.key === "categoryId"
-        ? getCategoryName(left.categoryId)
-        : left[sort.key];
-    const rightValue =
-      sort.key === "categoryId"
-        ? getCategoryName(right.categoryId)
-        : right[sort.key];
-
-    if (leftValue === null) return rightValue === null ? 0 : 1;
-    if (rightValue === null) return -1;
-
-    const comparison =
-      typeof leftValue === "string" && typeof rightValue === "string"
-        ? leftValue.localeCompare(rightValue)
-        : Number(leftValue) - Number(rightValue);
-
-    return sort.direction === "ascending" ? comparison : -comparison;
-  });
-}
+type SortState = { key: ReportSortKey; direction: ReportSortDirection };
 
 function SortableTableHead({
   align = "left",
@@ -89,9 +62,9 @@ function SortableTableHead({
   sort,
 }: {
   align?: "left" | "right";
-  column: SortKey;
+  column: ReportSortKey;
   label: string;
-  onSort: (column: SortKey) => void;
+  onSort: (column: ReportSortKey) => void;
   sort: SortState;
 }) {
   const isActive = sort.key === column;
@@ -127,16 +100,24 @@ export function ReportCard() {
     start: `${today.getFullYear()}-01`,
     end: currentMonth,
   });
+  const [pagination, setPagination] = useState({ offset: 0, limit: 10 });
   const [sort, setSort] = useState<SortState>({
     key: "month",
     direction: "descending",
   });
-  const { rows: reportRows, isLoading } = useReport(range.start, range.end);
-  const rows = sortReportRows(reportRows, sort);
+  const { rows, monthlyVariance, total, isLoading } = useReport(
+    range.start,
+    range.end,
+    pagination.offset,
+    pagination.limit,
+    sort.key,
+    sort.direction,
+  );
   const startMonth = range.start;
   const endMonth = range.end;
 
-  function handleSort(column: SortKey) {
+  function handleSort(column: ReportSortKey) {
+    setPagination((current) => ({ ...current, offset: 0 }));
     setSort((current) => ({
       key: column,
       direction:
@@ -154,7 +135,7 @@ export function ReportCard() {
           Plan and actual spend matched by category and month.
         </CardDescription>
         <CardAction>
-          <Badge variant="secondary">{rows.length} rows</Badge>
+          <Badge variant="secondary">{total} rows</Badge>
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
@@ -164,12 +145,13 @@ export function ReportCard() {
             <MonthPicker
               id="report-start-month"
               name="startMonth"
-              onValueChange={(start) =>
+              onValueChange={(start) => {
+                setPagination((current) => ({ ...current, offset: 0 }));
                 setRange((current) => ({
                   start,
                   end: current.end < start ? start : current.end,
-                }))
-              }
+                }));
+              }}
               value={startMonth}
             />
           </Field>
@@ -178,12 +160,13 @@ export function ReportCard() {
             <MonthPicker
               id="report-end-month"
               name="endMonth"
-              onValueChange={(end) =>
+              onValueChange={(end) => {
+                setPagination((current) => ({ ...current, offset: 0 }));
                 setRange((current) => ({
                   start: current.start > end ? end : current.start,
                   end,
-                }))
-              }
+                }));
+              }}
               value={endMonth}
             />
           </Field>
@@ -211,7 +194,7 @@ export function ReportCard() {
           </Empty>
         ) : (
           <div className="flex flex-col gap-6">
-            <MonthlyVarianceChart rows={rows} />
+            <MonthlyVarianceChart data={monthlyVariance} />
             <Table>
             <TableHeader>
               <TableRow>
@@ -222,39 +205,21 @@ export function ReportCard() {
                   sort={sort}
                 />
                 <SortableTableHead
-                  column="categoryId"
+                  column="category"
                   label="Category"
                   onSort={handleSort}
                   sort={sort}
                 />
                 <SortableTableHead
                   align="right"
-                  column="planCents"
+                  column="target"
                   label="Plan"
                   onSort={handleSort}
                   sort={sort}
                 />
-                <SortableTableHead
-                  align="right"
-                  column="actualCents"
-                  label="Actual"
-                  onSort={handleSort}
-                  sort={sort}
-                />
-                <SortableTableHead
-                  align="right"
-                  column="varianceCents"
-                  label="Variance"
-                  onSort={handleSort}
-                  sort={sort}
-                />
-                <SortableTableHead
-                  align="right"
-                  column="variancePercent"
-                  label="Variance %"
-                  onSort={handleSort}
-                  sort={sort}
-                />
+                <TableHead className="text-right">Actual</TableHead>
+                <TableHead className="text-right">Variance</TableHead>
+                <TableHead className="text-right">Variance %</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -282,6 +247,15 @@ export function ReportCard() {
               ))}
             </TableBody>
             </Table>
+            <PaginationControls
+              limit={pagination.limit}
+              offset={pagination.offset}
+              onLimitChange={(limit) => setPagination({ limit, offset: 0 })}
+              onOffsetChange={(offset) =>
+                setPagination((current) => ({ ...current, offset }))
+              }
+              total={total}
+            />
           </div>
         )}
       </CardContent>

@@ -13,6 +13,9 @@ type Actual = {
   note?: string;
 };
 
+export type ActualSortKey = "month" | "category" | "note" | "amount";
+export type ActualSortDirection = "ascending" | "descending";
+
 type ActualInput = {
   categoryId: string;
   month: string;
@@ -20,15 +23,30 @@ type ActualInput = {
   note?: string;
 };
 
-async function getActuals() {
-  const response = await fetch("/api/actuals");
-  const data = (await response.json()) as { actuals?: Actual[]; error?: string };
+async function getActuals(
+  offset: number,
+  limit: number,
+  sort: ActualSortKey,
+  direction: ActualSortDirection,
+) {
+  const query = new URLSearchParams({
+    offset: String(offset),
+    limit: String(limit),
+    sort,
+    direction,
+  });
+  const response = await fetch(`/api/actuals?${query}`);
+  const data = (await response.json()) as {
+    actuals?: Actual[];
+    total?: number;
+    error?: string;
+  };
 
   if (!response.ok) {
     throw new Error(data.error ?? "Actuals could not be loaded");
   }
 
-  return data.actuals ?? [];
+  return { actuals: data.actuals ?? [], total: data.total ?? 0 };
 }
 
 async function createActual(input: ActualInput) {
@@ -60,15 +78,20 @@ async function importActuals(file: File) {
   return data.imported ?? 0;
 }
 
-export function useActuals() {
+export function useActuals(
+  offset: number,
+  limit: number,
+  sort: ActualSortKey,
+  direction: ActualSortDirection,
+) {
   const queryClient = useQueryClient();
   const { data: session, isPending: isSessionPending } = authClient.useSession();
   const queryKey = ["actuals", session?.user.id] as const;
   const actualsQuery = useQuery({
-    queryKey,
+    queryKey: [...queryKey, offset, limit, sort, direction],
     queryFn: async () => {
       try {
-        return await getActuals();
+        return await getActuals(offset, limit, sort, direction);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Actuals could not be loaded");
         throw error;
@@ -101,7 +124,8 @@ export function useActuals() {
   });
 
   return {
-    actuals: actualsQuery.data ?? [],
+    actuals: actualsQuery.data?.actuals ?? [],
+    total: actualsQuery.data?.total ?? 0,
     isLoading: isSessionPending || actualsQuery.isLoading,
     isSaving: createActualMutation.isPending,
     isImporting: importActualsMutation.isPending,

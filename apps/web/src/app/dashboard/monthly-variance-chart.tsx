@@ -17,7 +17,7 @@ import {
 
 import { formatSignedCurrency } from "@/lib/formatters";
 
-import { buildMonthlyVariance, type ReportRow } from "./report";
+import type { MonthlyVariance } from "./report";
 
 const chartConfig = {
   varianceCents: {
@@ -26,8 +26,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function MonthlyVarianceChart({ rows }: { rows: ReportRow[] }) {
-  const data = buildMonthlyVariance(rows);
+export function MonthlyVarianceChart({ data }: { data: MonthlyVariance[] }) {
 
   return (
     <section aria-labelledby="monthly-variance-heading" className="flex flex-col gap-3">

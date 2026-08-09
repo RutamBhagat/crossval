@@ -10,6 +10,11 @@ type MonthlyActualTotal = {
   actualCents: number;
 };
 
+type MonthlyVariance = {
+  month: string;
+  varianceCents: number;
+};
+
 type ReportRow = {
   categoryId: string;
   month: string;
@@ -18,6 +23,19 @@ type ReportRow = {
   varianceCents: number;
   variancePercent: number | null;
 };
+
+function buildMonthlyVariance(rows: ReportRow[]): MonthlyVariance[] {
+  const totals = new Map<string, number>();
+
+  for (const row of rows) {
+    totals.set(row.month, (totals.get(row.month) ?? 0) + row.varianceCents);
+  }
+
+  return Array.from(totals, ([month, varianceCents]) => ({
+    month,
+    varianceCents,
+  })).sort((left, right) => left.month.localeCompare(right.month));
+}
 
 function buildReportRows(
   plans: MonthlyPlan[],
@@ -49,5 +67,5 @@ function buildReportRows(
   });
 }
 
-export { buildReportRows };
-export type { MonthlyActualTotal, MonthlyPlan, ReportRow };
+export { buildMonthlyVariance, buildReportRows };
+export type { MonthlyActualTotal, MonthlyPlan, MonthlyVariance, ReportRow };

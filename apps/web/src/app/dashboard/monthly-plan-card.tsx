@@ -32,7 +32,6 @@ import {
 } from "@crossval/ui/components/table";
 import { cn } from "@crossval/ui/lib/utils";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
@@ -40,12 +39,14 @@ import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";
 import { MonthPicker } from "./month-picker";
+import { PaginationControls } from "./pagination-controls";
 import { useLocks } from "./use-locks";
 import { useCategories } from "./use-categories";
-import { usePlans } from "./use-plans";
-
-type PlanSortKey = "month" | "category" | "amount";
-type SortDirection = "ascending" | "descending";
+import {
+  type PlanSortDirection,
+  type PlanSortKey,
+  usePlans,
+} from "./use-plans";
 
 function currentMonth() {
   const today = new Date();
@@ -63,7 +64,7 @@ function PlanTableHead({
   column: PlanSortKey;
   label: string;
   onSort: (column: PlanSortKey) => void;
-  sort: { key: PlanSortKey; direction: SortDirection };
+  sort: { key: PlanSortKey; direction: PlanSortDirection };
 }) {
   const isActive = sort.key === column;
   const SortIcon = isActive
@@ -93,42 +94,28 @@ function PlanTableHead({
 
 export function MonthlyPlanCard() {
   const [month, setMonth] = useState(currentMonth);
+  const [pagination, setPagination] = useState({ offset: 0, limit: 10 });
   const [sort, setSort] = useState<{
     key: PlanSortKey;
-    direction: SortDirection;
+    direction: PlanSortDirection;
   }>({ key: "month", direction: "descending" });
   const { categories } = useCategories();
   const categoryOptions = categories.map((category) => ({
     label: category.name,
     value: category.id,
   }));
-  const { plans, isLoading, isSaving, savePlan } = usePlans();
+  const { plans, total, isLoading, isSaving, savePlan } = usePlans(
+    pagination.offset,
+    pagination.limit,
+    sort.key,
+    sort.direction,
+  );
   const { locks, isLoading: locksAreLoading } = useLocks();
   const monthIsLocked = locks.some((lock) => lock.month === month);
-  const visiblePlans = [...plans]
-    .sort((left, right) => {
-      const leftValue =
-        sort.key === "category"
-          ? getCategoryName(left.categoryId)
-          : sort.key === "amount"
-            ? left.amountCents
-            : left.month;
-      const rightValue =
-        sort.key === "category"
-          ? getCategoryName(right.categoryId)
-          : sort.key === "amount"
-            ? right.amountCents
-            : right.month;
-      const comparison =
-        typeof leftValue === "string" && typeof rightValue === "string"
-          ? leftValue.localeCompare(rightValue)
-          : Number(leftValue) - Number(rightValue);
-
-      return sort.direction === "ascending" ? comparison : -comparison;
-    })
-    .slice(0, 10);
+  const visiblePlans = plans;
 
   function handleSort(column: PlanSortKey) {
+    setPagination((current) => ({ ...current, offset: 0 }));
     setSort((current) => ({
       key: column,
       direction:
@@ -234,7 +221,7 @@ export function MonthlyPlanCard() {
             <h3 id="saved-targets-heading" className="text-xs font-medium">
               Saved targets
             </h3>
-            <span className="font-mono text-xs text-muted-foreground">{plans.length}</span>
+            <span className="font-mono text-xs text-muted-foreground">{total}</span>
           </div>
           {isLoading ? (
             <div className="flex flex-col gap-2" aria-label="Loading targets">
@@ -292,16 +279,16 @@ export function MonthlyPlanCard() {
               </TableBody>
             </Table>
           )}
-          {plans.length > 10 && (
-            <div className="mt-3 flex justify-end border-t pt-3">
-              <Button
-                render={<Link href="/dashboard/reports" />}
-                size="sm"
-                variant="ghost"
-              >
-                View full report
-              </Button>
-            </div>
+          {total > 0 && (
+            <PaginationControls
+              limit={pagination.limit}
+              offset={pagination.offset}
+              onLimitChange={(limit) => setPagination({ limit, offset: 0 })}
+              onOffsetChange={(offset) =>
+                setPagination((current) => ({ ...current, offset }))
+              }
+              total={total}
+            />
           )}
         </section>
       </CardContent>

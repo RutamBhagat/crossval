@@ -31,7 +31,6 @@ import {
 } from "@crossval/ui/components/table";
 import { cn } from "@crossval/ui/lib/utils";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2, Upload } from "lucide-react";
-import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
@@ -39,20 +38,14 @@ import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";
 import { MonthPicker } from "./month-picker";
-import { useActuals } from "./use-actuals";
+import { PaginationControls } from "./pagination-controls";
+import {
+  type ActualSortDirection,
+  type ActualSortKey,
+  useActuals,
+} from "./use-actuals";
 import { useCategories } from "./use-categories";
 import { useLocks } from "./use-locks";
-
-type ActualEntry = {
-  id: string;
-  categoryId: string;
-  month: string;
-  amountCents: number;
-  note?: string;
-};
-
-type ActualSortKey = "month" | "category" | "note" | "amount";
-type SortDirection = "ascending" | "descending";
 
 function currentMonth() {
   const today = new Date();
@@ -70,7 +63,7 @@ function ActualTableHead({
   column: ActualSortKey;
   label: string;
   onSort: (column: ActualSortKey) => void;
-  sort: { key: ActualSortKey; direction: SortDirection };
+  sort: { key: ActualSortKey; direction: ActualSortDirection };
 }) {
   const isActive = sort.key === column;
   const SortIcon = isActive
@@ -100,48 +93,32 @@ function ActualTableHead({
 
 export function MonthlyActualCard() {
   const [month, setMonth] = useState(currentMonth);
+  const [pagination, setPagination] = useState({ offset: 0, limit: 10 });
   const [sort, setSort] = useState<{
     key: ActualSortKey;
-    direction: SortDirection;
+    direction: ActualSortDirection;
   }>({ key: "month", direction: "descending" });
   const { categories } = useCategories();
   const categoryOptions = categories.map((category) => ({
     label: category.name,
     value: category.id,
   }));
-  const { actuals, isImporting, isLoading, isSaving, createActual, importActuals } =
-    useActuals();
+  const {
+    actuals,
+    total,
+    isImporting,
+    isLoading,
+    isSaving,
+    createActual,
+    importActuals,
+  } = useActuals(pagination.offset, pagination.limit, sort.key, sort.direction);
   const importInputRef = useRef<HTMLInputElement>(null);
   const { locks, isLoading: locksAreLoading } = useLocks();
-  const visibleActuals = [...actuals]
-    .sort((left, right) => {
-      const leftValue =
-        sort.key === "category"
-          ? getCategoryName(left.categoryId)
-          : sort.key === "note"
-            ? left.note || ""
-            : sort.key === "amount"
-              ? left.amountCents
-              : left.month;
-      const rightValue =
-        sort.key === "category"
-          ? getCategoryName(right.categoryId)
-          : sort.key === "note"
-            ? right.note || ""
-            : sort.key === "amount"
-              ? right.amountCents
-              : right.month;
-      const comparison =
-        typeof leftValue === "string" && typeof rightValue === "string"
-          ? leftValue.localeCompare(rightValue)
-          : Number(leftValue) - Number(rightValue);
-
-      return sort.direction === "ascending" ? comparison : -comparison;
-    })
-    .slice(0, 10);
+  const visibleActuals = actuals;
   const monthIsLocked = locks.some((lock) => lock.month === month);
 
   function handleSort(column: ActualSortKey) {
+    setPagination((current) => ({ ...current, offset: 0 }));
     setSort((current) => ({
       key: column,
       direction:
@@ -292,7 +269,7 @@ export function MonthlyActualCard() {
               Logged actuals
             </h3>
             <span className="text-xs text-muted-foreground">
-              {actuals.length} {actuals.length === 1 ? "entry" : "entries"}
+              {total} {total === 1 ? "entry" : "entries"}
             </span>
           </div>
           {isLoading ? (
@@ -361,16 +338,16 @@ export function MonthlyActualCard() {
               </TableBody>
             </Table>
           )}
-          {actuals.length > 10 && (
-            <div className="mt-3 flex justify-end border-t pt-3">
-              <Button
-                render={<Link href="/dashboard/reports" />}
-                size="sm"
-                variant="ghost"
-              >
-                View full report
-              </Button>
-            </div>
+          {total > 0 && (
+            <PaginationControls
+              limit={pagination.limit}
+              offset={pagination.offset}
+              onLimitChange={(limit) => setPagination({ limit, offset: 0 })}
+              onOffsetChange={(offset) =>
+                setPagination((current) => ({ ...current, offset }))
+              }
+              total={total}
+            />
           )}
         </section>
       </CardContent>

@@ -110,8 +110,6 @@ Make these changes before production use:
 
 - Add more integration and browser tests for authentication and report workflows.
 
-- Add pagination for long actual and report lists.
-
 - Complete an accessibility and security review.
 
 ## Query approach at larger scale
@@ -124,4 +122,4 @@ The current schema has these main compound indexes:
 
 Report requests filter by `userId` and a bounded month range in MongoDB. A MongoDB aggregation groups actual entries by month and category. The server joins these totals with the plans before it returns report rows. This prevents the browser from loading all entries for a user.
 
-The unique plan index enforces one plan for each category and month. Long detail lists would use cursor pagination. Query execution plans and production metrics would determine whether more indexes are necessary.
+The dashboard plan, actual, and report lists use offset and limit pagination. The API limits each request to 50 rows. Report sorting supports month, category, and planned target. Query execution plans and production metrics would determine whether cursor pagination or more indexes are necessary.

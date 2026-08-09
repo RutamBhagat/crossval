@@ -8,7 +8,7 @@ import { categories } from "@/lib/categories";
 import { amountToCents } from "@/server/money";
 import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
 
-import { actualInputSchema } from "./schema";
+import { actualInputSchema, actualsQuerySchema } from "./schema";
 
 const actualsRouter = new Hono<{ Variables: AuthVariables }>();
 const categoryIdsByName = new Map(
@@ -17,21 +17,53 @@ const categoryIdsByName = new Map(
 
 actualsRouter.use("*", requireAuth);
 
-actualsRouter.get("/", async (c) => {
-  const actuals = await Actual.find({ userId: c.get("userId") })
-    .sort({ month: -1, categoryId: 1, createdAt: 1 })
-    .lean();
+actualsRouter.get(
+  "/",
+  zValidator("query", actualsQuerySchema, (result, c) => {
+    if (!result.success) {
+      return c.json(
+        { error: result.error.issues[0]?.message ?? "Invalid query" },
+        400,
+      );
+    }
+  }),
+  async (c) => {
+    const { direction, limit, offset, sort } = c.req.valid("query");
+    const filter = { userId: c.get("userId") };
+    const sortFields = {
+      month: "month",
+      category: "categoryId",
+      note: "note",
+      amount: "amountCents",
+    } as const;
+    const sortDirection = direction === "ascending" ? 1 : -1;
+    const databaseSort: Record<string, 1 | -1> = {
+      [sortFields[sort]]: sortDirection,
+      _id: 1,
+    };
+    const [actuals, total] = await Promise.all([
+      Actual.find(filter)
+        .sort(databaseSort)
+        .skip(offset)
+        .limit(limit)
+        .lean(),
+      Actual.countDocuments(filter),
+    ]);
 
-  return c.json({
-    actuals: actuals.map((actual) => ({
-      id: actual._id.toString(),
-      categoryId: actual.categoryId,
-      month: actual.month,
-      amountCents: actual.amountCents,
-      note: actual.note,
-    })),
-  });
-});
+    return c.json({
+      actuals: actuals.map((actual) => ({
+        id: actual._id.toString(),
+        categoryId: actual.categoryId,
+        month: actual.month,
+        amountCents: actual.amountCents,
+        note: actual.note,
+      })),
+      total,
+      offset,
+      limit,
+    });
+  },
+);
 
 actualsRouter.post("/import", async (c) => {
   const file = (await c.req.parseBody()).file;
