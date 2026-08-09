@@ -1,8 +1,15 @@
-import mongoose from "mongoose";
+import mongoose, { type Model } from "mongoose";
 
 const { Schema } = mongoose;
 
-const periodStateSchema = new Schema(
+export interface PeriodStateRecord {
+  userId: string;
+  month: string;
+  locked: boolean;
+  revision: number;
+}
+
+const periodStateSchema = new Schema<PeriodStateRecord>(
   {
     userId: {
       type: String,
@@ -34,6 +41,7 @@ const periodStateSchema = new Schema(
 periodStateSchema.index({ userId: 1, month: 1 }, { unique: true });
 
 const PeriodState =
-  mongoose.models.PeriodState ?? mongoose.model("PeriodState", periodStateSchema);
+  (mongoose.models.PeriodState as Model<PeriodStateRecord> | undefined) ??
+  mongoose.model<PeriodStateRecord>("PeriodState", periodStateSchema);
 
 export { PeriodState };
