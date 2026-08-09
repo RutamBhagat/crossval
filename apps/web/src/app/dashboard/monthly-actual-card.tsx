@@ -15,13 +15,13 @@ import { Input } from "@crossval/ui/components/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@crossval/ui/components/select";
 import { Separator } from "@crossval/ui/components/separator";
 import { Skeleton } from "@crossval/ui/components/skeleton";
-import { Textarea } from "@crossval/ui/components/textarea";
 import { Loader2 } from "lucide-react";
 
 import { categories, categoryOptions, getCategoryName } from "@/lib/categories";
@@ -34,7 +34,7 @@ export function MonthlyActualCard() {
   const { actuals, isLoading, isSaving, createActual } = useActuals();
 
   return (
-    <Card className="scroll-mt-20 shadow-xs" id="actual-spend">
+    <Card className="h-full scroll-mt-20 shadow-none" id="actual-spend">
       <CardHeader className="border-b">
         <CardTitle>Log actual spend</CardTitle>
         <CardDescription>Record what was spent for a category and month.</CardDescription>
@@ -42,7 +42,7 @@ export function MonthlyActualCard() {
           <Badge variant="outline">Actual</Badge>
         </CardAction>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="flex flex-col gap-5">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -58,26 +58,6 @@ export function MonthlyActualCard() {
           }}
         >
           <FieldGroup className="gap-4">
-            <Field>
-              <FieldLabel htmlFor="actual-category">Category</FieldLabel>
-              <Select
-                defaultValue={categories[0]?.id}
-                items={categoryOptions}
-                name="categoryId"
-                required
-              >
-                <SelectTrigger id="actual-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="actual-month">Month</FieldLabel>
@@ -97,19 +77,45 @@ export function MonthlyActualCard() {
                 />
               </Field>
             </div>
-            <Field>
-              <FieldLabel htmlFor="actual-note">Note (optional)</FieldLabel>
-              <Textarea
-                id="actual-note"
-                maxLength={500}
-                name="note"
-                placeholder="Campaign spend"
-              />
-            </Field>
-            <Button className="w-full sm:w-fit" disabled={isSaving} type="submit">
-              {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
-              Log actual
-            </Button>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="actual-category">Category</FieldLabel>
+                <Select
+                  defaultValue={categories[0]?.id}
+                  items={categoryOptions}
+                  name="categoryId"
+                  required
+                >
+                  <SelectTrigger id="actual-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="actual-note">Note (optional)</FieldLabel>
+                <Input
+                  id="actual-note"
+                  maxLength={500}
+                  name="note"
+                  placeholder="Campaign spend"
+                />
+              </Field>
+            </div>
+            <div className="flex justify-end">
+              <Button disabled={isSaving} type="submit">
+                {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
+                Log actual
+              </Button>
+            </div>
           </FieldGroup>
         </form>
 
@@ -122,7 +128,7 @@ export function MonthlyActualCard() {
             <span className="font-mono text-xs text-muted-foreground">{actuals.length}</span>
           </div>
           {isLoading ? (
-            <div className="space-y-2" aria-label="Loading actuals">
+            <div className="flex flex-col gap-2" aria-label="Loading actuals">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-4/5" />
             </div>

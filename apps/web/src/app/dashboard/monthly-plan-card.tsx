@@ -15,6 +15,7 @@ import { Input } from "@crossval/ui/components/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -33,7 +34,7 @@ export function MonthlyPlanCard() {
   const { plans, isLoading, isSaving, savePlan } = usePlans();
 
   return (
-    <Card className="scroll-mt-20 shadow-xs" id="monthly-plan">
+    <Card className="h-full scroll-mt-20 shadow-none" id="monthly-plan">
       <CardHeader className="border-b">
         <CardTitle>Set a monthly plan</CardTitle>
         <CardDescription>Choose a category, month, and target amount.</CardDescription>
@@ -41,7 +42,7 @@ export function MonthlyPlanCard() {
           <Badge variant="outline">Plan</Badge>
         </CardAction>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="flex flex-col gap-5">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -55,26 +56,6 @@ export function MonthlyPlanCard() {
           }}
         >
           <FieldGroup className="gap-4">
-            <Field>
-              <FieldLabel htmlFor="plan-category">Category</FieldLabel>
-              <Select
-                defaultValue={categories[0]?.id}
-                items={categoryOptions}
-                name="categoryId"
-                required
-              >
-                <SelectTrigger id="plan-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="plan-month">Month</FieldLabel>
@@ -94,10 +75,34 @@ export function MonthlyPlanCard() {
                 />
               </Field>
             </div>
-            <Button className="w-full sm:w-fit" disabled={isSaving} type="submit">
-              {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
-              Save target
-            </Button>
+            <Field>
+              <FieldLabel htmlFor="plan-category">Category</FieldLabel>
+              <Select
+                defaultValue={categories[0]?.id}
+                items={categoryOptions}
+                name="categoryId"
+                required
+              >
+                <SelectTrigger id="plan-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="flex justify-end">
+              <Button disabled={isSaving} type="submit">
+                {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
+                Save target
+              </Button>
+            </div>
           </FieldGroup>
         </form>
 
@@ -110,7 +115,7 @@ export function MonthlyPlanCard() {
             <span className="font-mono text-xs text-muted-foreground">{plans.length}</span>
           </div>
           {isLoading ? (
-            <div className="space-y-2" aria-label="Loading targets">
+            <div className="flex flex-col gap-2" aria-label="Loading targets">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-4/5" />
             </div>

@@ -1,0 +1,1 @@
+- Do not edit globals.css file manually, it should only be updated automatically when you add a new component using cli, from shadcn

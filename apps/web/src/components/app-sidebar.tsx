@@ -5,31 +5,38 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarFooter,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@crossval/ui/components/sidebar";
 import { LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+import UserMenu from "./user-menu";
 
 const navigation = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
 ] as const;
 
 export function AppSidebar() {
+  const { toggleSidebar } = useSidebar();
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              render={<Link href="/dashboard" />}
+              aria-label="Toggle workspace navigation"
+              onClick={toggleSidebar}
               size="lg"
-              tooltip="Crossval"
+              tooltip="Toggle sidebar"
             >
               <Image
                 alt="Crossval"
@@ -38,14 +45,7 @@ export function AppSidebar() {
                 src="/logo.png"
                 width={32}
               />
-              <div className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-mono text-sm font-semibold">
-                  CrossVal
-                </span>
-                <span className="truncate text-xs text-sidebar-foreground/65">
-                  Spending workspace
-                </span>
-              </div>
+              <span className="truncate font-mono text-sm font-semibold">CrossVal</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -72,6 +72,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t">
+        <UserMenu placement="sidebar" />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
