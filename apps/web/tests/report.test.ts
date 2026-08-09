@@ -162,4 +162,23 @@ describe("report variance", () => {
       variancePercent: -100,
     });
   });
+
+  it("includes an actual total without a plan", () => {
+    const [row] = buildReportRows([], [
+      {
+        categoryId: "tools",
+        month: "2026-02",
+        actualCents: 50_000,
+      },
+    ]);
+
+    expect(row).toEqual({
+      categoryId: "tools",
+      month: "2026-02",
+      planCents: 0,
+      actualCents: 50_000,
+      varianceCents: 50_000,
+      variancePercent: null,
+    });
+  });
 });

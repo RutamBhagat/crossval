@@ -68,28 +68,42 @@ function buildReportRows(
   plans: MonthlyPlan[],
   actualTotals: MonthlyActualTotal[],
 ): ReportRow[] {
-  const actualsByPeriod = new Map(
-    actualTotals.map((actual) => [
-      `${actual.categoryId}:${actual.month}`,
-      actual.actualCents,
-    ]),
-  );
+  const periods = new Map<
+    string,
+    Pick<ReportRow, "categoryId" | "month" | "planCents" | "actualCents">
+  >();
 
-  return plans.map((plan) => {
-    const actualCents =
-      actualsByPeriod.get(`${plan.categoryId}:${plan.month}`) ?? 0;
-    const varianceCents = actualCents - plan.amountCents;
-
-    return {
+  for (const plan of plans) {
+    periods.set(`${plan.categoryId}:${plan.month}`, {
       categoryId: plan.categoryId,
       month: plan.month,
       planCents: plan.amountCents,
-      actualCents,
+      actualCents: 0,
+    });
+  }
+
+  for (const actual of actualTotals) {
+    const key = `${actual.categoryId}:${actual.month}`;
+    const period = periods.get(key);
+
+    periods.set(key, {
+      categoryId: actual.categoryId,
+      month: actual.month,
+      planCents: period?.planCents ?? 0,
+      actualCents: actual.actualCents,
+    });
+  }
+
+  return Array.from(periods.values(), (period) => {
+    const varianceCents = period.actualCents - period.planCents;
+
+    return {
+      ...period,
       varianceCents,
       variancePercent:
-        plan.amountCents === 0
+        period.planCents === 0
           ? null
-          : (varianceCents / plan.amountCents) * 100,
+          : (varianceCents / period.planCents) * 100,
     };
   });
 }

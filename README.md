@@ -77,9 +77,11 @@ pnpm db:stop
 
 The report treats a missing actual as zero. It shows `$0.00` in the Actual column and calculates the variance as `0 - Plan`. For example, a `$5,000.00` plan with no actual has a `-$5,000.00` variance and a `-100.00%` variance.
 
-### Zero plan
+### Zero or missing plan
 
-The report shows `N/A` for the variance percentage when the plan is zero. This prevents division by zero. It still calculates the amount variance as `Actual - Plan`.
+The report includes actual spending that has no plan for the same category and month. It treats the missing plan as zero, so unplanned spending remains visible in the report, chart, and CSV export. Category-month combinations with no plan and no actual are not shown.
+
+The report shows `N/A` for the variance percentage when the plan is zero or missing. This prevents division by zero. It still calculates the amount variance as `Actual - Plan`.
 
 ### Fiscal-year range
 
