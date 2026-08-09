@@ -10,7 +10,9 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 const months = Array.from({ length: 12 }, (_, month) =>
-  new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(2026, month)),
+  new Intl.DateTimeFormat("en-US", { month: "short" }).format(
+    new Date(2026, month),
+  ),
 );
 
 function currentMonth() {
@@ -25,7 +27,12 @@ type MonthPickerProps = {
   onValueChange?: (value: string) => void;
 };
 
-export function MonthPicker({ id, name, value, onValueChange }: MonthPickerProps) {
+export function MonthPicker({
+  id,
+  name,
+  value,
+  onValueChange,
+}: MonthPickerProps) {
   const [internalValue, setInternalValue] = useState(currentMonth);
   const selectedValue = value ?? internalValue;
   const selectedYear = Number(selectedValue.slice(0, 4));
@@ -64,9 +71,10 @@ export function MonthPicker({ id, name, value, onValueChange }: MonthPickerProps
         }
       >
         <CalendarDays />
-        {new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
-          new Date(selectedYear, selectedMonth),
-        )}
+        {new Intl.DateTimeFormat("en-US", {
+          month: "long",
+          year: "numeric",
+        }).format(new Date(selectedYear, selectedMonth))}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-3">
         <div className="flex items-center justify-between">
@@ -96,7 +104,11 @@ export function MonthPicker({ id, name, value, onValueChange }: MonthPickerProps
               key={month}
               onClick={() => selectMonth(index)}
               type="button"
-              variant={year === selectedYear && index === selectedMonth ? "default" : "ghost"}
+              variant={
+                year === selectedYear && index === selectedMonth
+                  ? "default"
+                  : "ghost"
+              }
             >
               {month}
             </Button>

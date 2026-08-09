@@ -36,11 +36,7 @@ plansRouter.get(
       _id: 1,
     };
     const [plans, total] = await Promise.all([
-      Plan.find(filter)
-        .sort(databaseSort)
-        .skip(offset)
-        .limit(limit)
-        .lean(),
+      Plan.find(filter).sort(databaseSort).skip(offset).limit(limit).lean(),
       Plan.countDocuments(filter),
     ]);
 

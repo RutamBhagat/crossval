@@ -32,9 +32,7 @@ type ReportSortDirection = "ascending" | "descending";
 async function loadReportRows(userId: string, start: string, end: string) {
   const month = { $gte: start, $lte: end };
   const [plans, aggregatedActuals] = await Promise.all([
-    Plan.find({ userId, month })
-      .sort({ month: -1, categoryId: 1 })
-      .lean(),
+    Plan.find({ userId, month }).sort({ month: -1, categoryId: 1 }).lean(),
     Actual.aggregate<AggregatedActual>([
       { $match: { userId, month } },
       {
@@ -137,8 +135,7 @@ reportsRouter.get(
 
     return new Response(csv, {
       headers: {
-        "Content-Disposition":
-          `attachment; filename="variance-report-${start}-to-${end}.csv"`,
+        "Content-Disposition": `attachment; filename="variance-report-${start}-to-${end}.csv"`,
         "Content-Type": "text/csv; charset=utf-8",
       },
     });
@@ -160,7 +157,10 @@ reportsRouter.get(
     const reports = await loadReportRows(c.get("userId"), start, end);
 
     // Keep the unpaginated response for API clients that do not request a page.
-    if (c.req.query("offset") === undefined && c.req.query("limit") === undefined) {
+    if (
+      c.req.query("offset") === undefined &&
+      c.req.query("limit") === undefined
+    ) {
       return c.json({ reports });
     }
 

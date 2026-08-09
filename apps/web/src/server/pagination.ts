@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 const paginationQuerySchema = z.object({
-  offset: z.coerce.number().int().min(0, "Offset must be zero or greater").default(0),
+  offset: z.coerce
+    .number()
+    .int()
+    .min(0, "Offset must be zero or greater")
+    .default(0),
   limit: z.coerce
     .number()
     .int()

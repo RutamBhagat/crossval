@@ -30,7 +30,13 @@ import {
   TableRow,
 } from "@crossval/ui/components/table";
 import { cn } from "@crossval/ui/lib/utils";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2, Upload } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+  Loader2,
+  Upload,
+} from "lucide-react";
 import { useRef, useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
@@ -132,7 +138,9 @@ export function MonthlyActualCard() {
     <Card className="h-full scroll-mt-20 shadow-none" id="actual-spend">
       <CardHeader className="border-b">
         <CardTitle>Log actual spend</CardTitle>
-        <CardDescription>Record what was spent for a category and month.</CardDescription>
+        <CardDescription>
+          Record what was spent for a category and month.
+        </CardDescription>
         <CardAction>
           <Input
             accept=".csv,text/csv"
@@ -255,7 +263,9 @@ export function MonthlyActualCard() {
                 disabled={isSaving || locksAreLoading || monthIsLocked}
                 type="submit"
               >
-                {isSaving && <Loader2 className="animate-spin" data-icon="inline-start" />}
+                {isSaving && (
+                  <Loader2 className="animate-spin" data-icon="inline-start" />
+                )}
                 Log actual
               </Button>
             </div>
@@ -278,7 +288,9 @@ export function MonthlyActualCard() {
               <Skeleton className="h-8 w-4/5" />
             </div>
           ) : actuals.length === 0 ? (
-            <p className="py-3 text-xs text-muted-foreground">No actual spend logged yet.</p>
+            <p className="py-3 text-xs text-muted-foreground">
+              No actual spend logged yet.
+            </p>
           ) : (
             <Table aria-label="Logged actual spend">
               <TableHeader>
@@ -316,7 +328,9 @@ export function MonthlyActualCard() {
                     <TableCell className="font-mono text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <MonthLockStatus
-                          locked={locks.some((lock) => lock.month === actual.month)}
+                          locked={locks.some(
+                            (lock) => lock.month === actual.month,
+                          )}
                         />
                         {actual.month}
                       </span>

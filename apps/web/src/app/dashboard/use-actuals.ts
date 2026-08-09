@@ -85,7 +85,8 @@ export function useActuals(
   direction: ActualSortDirection,
 ) {
   const queryClient = useQueryClient();
-  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
   const queryKey = ["actuals", session?.user.id] as const;
   const actualsQuery = useQuery({
     queryKey: [...queryKey, offset, limit, sort, direction],
@@ -93,7 +94,11 @@ export function useActuals(
       try {
         return await getActuals(offset, limit, sort, direction);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Actuals could not be loaded");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Actuals could not be loaded",
+        );
         throw error;
       }
     },

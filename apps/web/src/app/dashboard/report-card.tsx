@@ -181,7 +181,10 @@ export function ReportCard() {
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <section aria-label="Report date range" className="grid gap-4 sm:grid-cols-3">
+        <section
+          aria-label="Report date range"
+          className="grid gap-4 sm:grid-cols-3"
+        >
           <Field>
             <FieldLabel>Fiscal year (Jan–Dec)</FieldLabel>
             <div className="grid grid-cols-[auto_1fr_auto]">
@@ -254,11 +257,10 @@ export function ReportCard() {
               <EmptyMedia variant="icon">
                 <ChartNoAxesColumnIncreasing />
               </EmptyMedia>
-              <EmptyTitle>
-                No rows in this date range
-              </EmptyTitle>
+              <EmptyTitle>No rows in this date range</EmptyTitle>
               <EmptyDescription>
-                Save a monthly target in the selected range to create a report row.
+                Save a monthly target in the selected range to create a report
+                row.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -266,72 +268,72 @@ export function ReportCard() {
           <div className="flex flex-col gap-6">
             <MonthlyVarianceChart data={monthlyVariance} />
             <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableTableHead
-                  column="month"
-                  label="Month"
-                  onSort={handleSort}
-                  sort={sort}
-                />
-                <SortableTableHead
-                  column="category"
-                  label="Category"
-                  onSort={handleSort}
-                  sort={sort}
-                />
-                <SortableTableHead
-                  align="right"
-                  column="target"
-                  label="Plan"
-                  onSort={handleSort}
-                  sort={sort}
-                />
-                <TableHead className="text-right">Actual</TableHead>
-                <TableHead className="text-right">Variance</TableHead>
-                <TableHead className="text-right">Variance %</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={`${row.categoryId}-${row.month}`}>
-                  <TableCell className="font-mono text-muted-foreground">
-                    {row.month}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {getCategoryName(row.categoryId)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {formatCurrency(row.planCents)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      aria-label={`Show actual entries for ${getCategoryName(row.categoryId)} in ${row.month}`}
-                      className="-my-2 -mr-2 ml-auto"
-                      onClick={() =>
-                        setSelectedRow({
-                          categoryId: row.categoryId,
-                          month: row.month,
-                        })
-                      }
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <span className="font-mono tabular-nums">
-                        {formatCurrency(row.actualCents)}
-                      </span>
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium tabular-nums">
-                    {formatSignedCurrency(row.varianceCents)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {formatSignedPercent(row.variancePercent)}
-                  </TableCell>
+              <TableHeader>
+                <TableRow>
+                  <SortableTableHead
+                    column="month"
+                    label="Month"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <SortableTableHead
+                    column="category"
+                    label="Category"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <SortableTableHead
+                    align="right"
+                    column="target"
+                    label="Plan"
+                    onSort={handleSort}
+                    sort={sort}
+                  />
+                  <TableHead className="text-right">Actual</TableHead>
+                  <TableHead className="text-right">Variance</TableHead>
+                  <TableHead className="text-right">Variance %</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={`${row.categoryId}-${row.month}`}>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {row.month}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {getCategoryName(row.categoryId)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatCurrency(row.planCents)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        aria-label={`Show actual entries for ${getCategoryName(row.categoryId)} in ${row.month}`}
+                        className="-my-2 -mr-2 ml-auto"
+                        onClick={() =>
+                          setSelectedRow({
+                            categoryId: row.categoryId,
+                            month: row.month,
+                          })
+                        }
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <span className="font-mono tabular-nums">
+                          {formatCurrency(row.actualCents)}
+                        </span>
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium tabular-nums">
+                      {formatSignedCurrency(row.varianceCents)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatSignedPercent(row.variancePercent)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
             <PaginationControls
               limit={pagination.limit}

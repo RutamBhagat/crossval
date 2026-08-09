@@ -12,7 +12,10 @@ type PeriodLock = {
 
 async function getLocks() {
   const response = await fetch("/api/locks");
-  const data = (await response.json()) as { locks?: PeriodLock[]; error?: string };
+  const data = (await response.json()) as {
+    locks?: PeriodLock[];
+    error?: string;
+  };
 
   if (!response.ok) {
     throw new Error(data.error ?? "Locked months could not be loaded");
@@ -36,7 +39,8 @@ async function lockMonth(month: string) {
 
 export function useLocks() {
   const queryClient = useQueryClient();
-  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
   const queryKey = ["locks", session?.user.id] as const;
   const locksQuery = useQuery({
     queryKey,
@@ -44,7 +48,11 @@ export function useLocks() {
       try {
         return await getLocks();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Locked months could not be loaded");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Locked months could not be loaded",
+        );
         throw error;
       }
     },

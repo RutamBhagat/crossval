@@ -7,7 +7,11 @@ import { AppSidebar } from "@/components/app-sidebar";
 import Header from "@/components/header";
 import { authClient } from "@/lib/auth-client";
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const session = await authClient.getSession({
     fetchOptions: {
       headers: await headers(),

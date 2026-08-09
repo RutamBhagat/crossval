@@ -49,7 +49,11 @@ export function PaginationControls({
             }}
             value={String(limit)}
           >
-            <SelectTrigger aria-label="Rows per page" className="w-16" size="sm">
+            <SelectTrigger
+              aria-label="Rows per page"
+              className="w-16"
+              size="sm"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="top">

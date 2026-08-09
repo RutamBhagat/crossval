@@ -54,7 +54,10 @@ export function ReportActualsDialog({
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (
-          <div aria-label="Loading actual entries" className="flex flex-col gap-2">
+          <div
+            aria-label="Loading actual entries"
+            className="flex flex-col gap-2"
+          >
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-4/5" />
           </div>

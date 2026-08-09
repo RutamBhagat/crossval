@@ -131,11 +131,17 @@ export function MonthLockCard() {
                 Closed months
               </h3>
             </div>
-            <CalendarCheck className="size-5 text-muted-foreground" aria-hidden="true" />
+            <CalendarCheck
+              className="size-5 text-muted-foreground"
+              aria-hidden="true"
+            />
           </div>
 
           {isLoading ? (
-            <div className="flex flex-col gap-2" aria-label="Loading closed months">
+            <div
+              className="flex flex-col gap-2"
+              aria-label="Loading closed months"
+            >
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-3/4" />
             </div>
@@ -152,7 +158,10 @@ export function MonthLockCard() {
               </EmptyHeader>
             </Empty>
           ) : (
-            <ul className="grid gap-2 sm:grid-cols-2" aria-label="Closed months">
+            <ul
+              className="grid gap-2 sm:grid-cols-2"
+              aria-label="Closed months"
+            >
               {locks.map((lock) => (
                 <li
                   className="flex items-center justify-between gap-3 border bg-muted/30 px-3 py-2.5"

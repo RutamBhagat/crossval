@@ -10,7 +10,9 @@ const monthSchema = z
 const categoryIds = new Set<string>(categories.map((category) => category.id));
 
 const reportActualsQuerySchema = z.object({
-  categoryId: z.string().refine((value) => categoryIds.has(value), "Unknown category"),
+  categoryId: z
+    .string()
+    .refine((value) => categoryIds.has(value), "Unknown category"),
   month: monthSchema,
 });
 
@@ -34,8 +36,4 @@ const reportQuerySchema = paginationQuerySchema
   .extend(reportRangeFields)
   .refine(({ start, end }) => start <= end, validRange);
 
-export {
-  reportActualsQuerySchema,
-  reportExportQuerySchema,
-  reportQuerySchema,
-};
+export { reportActualsQuerySchema, reportExportQuerySchema, reportQuerySchema };

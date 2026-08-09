@@ -42,11 +42,7 @@ actualsRouter.get(
       _id: 1,
     };
     const [actuals, total] = await Promise.all([
-      Actual.find(filter)
-        .sort(databaseSort)
-        .skip(offset)
-        .limit(limit)
-        .lean(),
+      Actual.find(filter).sort(databaseSort).skip(offset).limit(limit).lean(),
       Actual.countDocuments(filter),
     ]);
 
@@ -73,14 +69,24 @@ actualsRouter.post("/import", async (c) => {
 
   let records: string[][];
   try {
-    records = parse(await file.text(), { bom: true, skip_empty_lines: true, trim: true });
+    records = parse(await file.text(), {
+      bom: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
   } catch {
     return c.json({ error: "CSV could not be parsed" }, 400);
   }
 
   const [headers, ...rows] = records;
-  if (headers?.join(",").toLowerCase() !== "month,category,amount" || rows.length === 0) {
-    return c.json({ error: "CSV must contain month,category,amount headers and rows" }, 400);
+  if (
+    headers?.join(",").toLowerCase() !== "month,category,amount" ||
+    rows.length === 0
+  ) {
+    return c.json(
+      { error: "CSV must contain month,category,amount headers and rows" },
+      400,
+    );
   }
 
   const importedActuals: Array<{
@@ -145,21 +151,25 @@ actualsRouter.post(
       return c.json({ error: "Amount is too large" }, 400);
     }
 
-    const result = await runIfPeriodsOpen(userId, [input.month], async (session) => {
-      const [actual] = await Actual.create(
-        [
-          {
-            userId,
-            categoryId: input.categoryId,
-            month: input.month,
-            amountCents,
-            note: input.note || undefined,
-          },
-        ],
-        { session },
-      );
-      return actual;
-    });
+    const result = await runIfPeriodsOpen(
+      userId,
+      [input.month],
+      async (session) => {
+        const [actual] = await Actual.create(
+          [
+            {
+              userId,
+              categoryId: input.categoryId,
+              month: input.month,
+              amountCents,
+              note: input.note || undefined,
+            },
+          ],
+          { session },
+        );
+        return actual;
+      },
+    );
 
     if (!result.ok) {
       return c.json({ error: `Actuals for ${input.month} are locked` }, 423);

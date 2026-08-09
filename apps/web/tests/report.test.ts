@@ -73,9 +73,7 @@ describe("report aggregation", () => {
   });
 
   it("returns server-built rows for the authenticated user and month range", async () => {
-    const response = await reportsRouter.request(
-      "/?start=2026-01&end=2026-03",
-    );
+    const response = await reportsRouter.request("/?start=2026-01&end=2026-03");
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

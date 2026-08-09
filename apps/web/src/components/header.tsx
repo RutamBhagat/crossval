@@ -28,7 +28,9 @@ function WorkspaceBrandTrigger() {
         src="/logo.png"
         width={24}
       />
-      <span className="font-mono text-xs font-semibold tracking-tight">CrossVal</span>
+      <span className="font-mono text-xs font-semibold tracking-tight">
+        CrossVal
+      </span>
     </Button>
   );
 }

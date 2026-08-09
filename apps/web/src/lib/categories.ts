@@ -10,7 +10,10 @@ export const categoryOptions = categories.map((category) => ({
 }));
 
 export function getCategoryName(categoryId: string) {
-  return categories.find((category) => category.id === categoryId)?.name ?? categoryId;
+  return (
+    categories.find((category) => category.id === categoryId)?.name ??
+    categoryId
+  );
 }
 
 export type CategoryId = (typeof categories)[number]["id"];

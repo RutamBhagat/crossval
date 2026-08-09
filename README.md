@@ -15,6 +15,7 @@ Install these tools before you start:
 https://crossval-web-five.vercel.app/
 
 Production stack:
+
 - Vercel — Next.js application
 - MongoDB Atlas — production database
 

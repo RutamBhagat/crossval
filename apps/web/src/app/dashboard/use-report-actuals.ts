@@ -35,7 +35,9 @@ export function useReportActuals(categoryId?: string, month?: string) {
         return await getReportActuals(categoryId!, month!);
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Actual entries could not be loaded",
+          error instanceof Error
+            ? error.message
+            : "Actual entries could not be loaded",
         );
         throw error;
       }

@@ -52,7 +52,8 @@ export function useReport(
   sort: ReportSortKey,
   direction: ReportSortDirection,
 ) {
-  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
   const reportQuery = useQuery({
     queryKey: [
       "reports",
@@ -66,9 +67,18 @@ export function useReport(
     ],
     queryFn: async () => {
       try {
-        return await getReport(startMonth, endMonth, offset, limit, sort, direction);
+        return await getReport(
+          startMonth,
+          endMonth,
+          offset,
+          limit,
+          sort,
+          direction,
+        );
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Report could not be loaded");
+        toast.error(
+          error instanceof Error ? error.message : "Report could not be loaded",
+        );
         throw error;
       }
     },

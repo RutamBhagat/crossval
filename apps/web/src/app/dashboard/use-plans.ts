@@ -67,7 +67,8 @@ export function usePlans(
   direction: PlanSortDirection,
 ) {
   const queryClient = useQueryClient();
-  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
   const queryKey = ["plans", session?.user.id] as const;
   const plansQuery = useQuery({
     queryKey: [...queryKey, offset, limit, sort, direction],
@@ -75,7 +76,9 @@ export function usePlans(
       try {
         return await getPlans(offset, limit, sort, direction);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Plans could not be loaded");
+        toast.error(
+          error instanceof Error ? error.message : "Plans could not be loaded",
+        );
         throw error;
       }
     },

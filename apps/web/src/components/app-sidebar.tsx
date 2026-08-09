@@ -57,7 +57,9 @@ export function AppSidebar() {
                 src="/logo.png"
                 width={32}
               />
-              <span className="truncate font-mono text-sm font-semibold">CrossVal</span>
+              <span className="truncate font-mono text-sm font-semibold">
+                CrossVal
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

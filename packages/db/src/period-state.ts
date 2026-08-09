@@ -10,8 +10,7 @@ class PeriodLockedError extends Error {
 }
 
 type OpenPeriodResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; lockedMonth: string };
+  { ok: true; value: T } | { ok: false; lockedMonth: string };
 
 async function closePeriod(userId: string, month: string) {
   return PeriodState.findOneAndUpdate(

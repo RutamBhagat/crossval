@@ -49,7 +49,10 @@ export default function UserMenu({ placement = "header" }: UserMenuProps) {
       return (
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton render={<Link href="/login" />} tooltip="Sign in">
+            <SidebarMenuButton
+              render={<Link href="/login" />}
+              tooltip="Sign in"
+            >
               <LogIn />
               <span>Sign in</span>
             </SidebarMenuButton>
@@ -91,7 +94,9 @@ export default function UserMenu({ placement = "header" }: UserMenuProps) {
             >
               <UserRound />
               <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">{session.user.name}</span>
+                <span className="truncate font-medium">
+                  {session.user.name}
+                </span>
                 <span className="truncate text-sidebar-foreground/65">
                   {session.user.email}
                 </span>
@@ -101,8 +106,12 @@ export default function UserMenu({ placement = "header" }: UserMenuProps) {
             <DropdownMenuContent align="end" side="top">
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">{session.user.name}</span>
-                  <span className="max-w-52 truncate">{session.user.email}</span>
+                  <span className="font-medium text-foreground">
+                    {session.user.name}
+                  </span>
+                  <span className="max-w-52 truncate">
+                    {session.user.email}
+                  </span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} variant="destructive">
@@ -127,7 +136,9 @@ export default function UserMenu({ placement = "header" }: UserMenuProps) {
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex flex-col gap-0.5">
-            <span className="font-medium text-foreground">{session.user.name}</span>
+            <span className="font-medium text-foreground">
+              {session.user.name}
+            </span>
             <span className="max-w-52 truncate">{session.user.email}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

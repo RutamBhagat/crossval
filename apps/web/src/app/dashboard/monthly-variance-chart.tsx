@@ -27,9 +27,11 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function MonthlyVarianceChart({ data }: { data: MonthlyVariance[] }) {
-
   return (
-    <section aria-labelledby="monthly-variance-heading" className="flex flex-col gap-3">
+    <section
+      aria-labelledby="monthly-variance-heading"
+      className="flex flex-col gap-3"
+    >
       <header>
         <h3 className="text-sm font-medium" id="monthly-variance-heading">
           Monthly net variance
@@ -43,7 +45,11 @@ export function MonthlyVarianceChart({ data }: { data: MonthlyVariance[] }) {
         className="h-64 w-full"
         config={chartConfig}
       >
-        <LineChart accessibilityLayer data={data} margin={{ left: 8, right: 8 }}>
+        <LineChart
+          accessibilityLayer
+          data={data}
+          margin={{ left: 8, right: 8 }}
+        >
           <CartesianGrid vertical={false} />
           <XAxis
             axisLine={false}

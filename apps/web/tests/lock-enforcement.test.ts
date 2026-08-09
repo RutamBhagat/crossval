@@ -53,24 +53,32 @@ describe("monthly lock enforcement", () => {
 
   it.each([
     { name: "plan", router: plansRouter, method: "PUT", write: mocks.planSave },
-    { name: "actual", router: actualsRouter, method: "POST", write: mocks.actualCreate },
-  ])("rejects a $name write for a locked month", async ({ router, method, write }) => {
-    const response = await router.request("/", {
-      method,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        categoryId: "marketing",
-        month: "2026-01",
-        amount: "100.00",
-      }),
-    });
+    {
+      name: "actual",
+      router: actualsRouter,
+      method: "POST",
+      write: mocks.actualCreate,
+    },
+  ])(
+    "rejects a $name write for a locked month",
+    async ({ router, method, write }) => {
+      const response = await router.request("/", {
+        method,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryId: "marketing",
+          month: "2026-01",
+          amount: "100.00",
+        }),
+      });
 
-    expect(response.status).toBe(423);
-    await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining("2026-01"),
-    });
-    expect(write).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(423);
+      await expect(response.json()).resolves.toMatchObject({
+        error: expect.stringContaining("2026-01"),
+      });
+      expect(write).not.toHaveBeenCalled();
+    },
+  );
 
   it("saves a plan in the guarded transaction", async () => {
     const session = allowWrites();
@@ -107,7 +115,10 @@ describe("monthly lock enforcement", () => {
     const body = new FormData();
     body.set(
       "file",
-      new File(["month,category,amount\n2026-01,Marketing,100.00"], "actuals.csv"),
+      new File(
+        ["month,category,amount\n2026-01,Marketing,100.00"],
+        "actuals.csv",
+      ),
     );
 
     const response = await actualsRouter.request("/import", {
@@ -121,7 +132,9 @@ describe("monthly lock enforcement", () => {
       ["2026-01"],
       expect.any(Function),
     );
-    expect(mocks.actualInsertMany).toHaveBeenCalledWith(expect.anything(), { session });
+    expect(mocks.actualInsertMany).toHaveBeenCalledWith(expect.anything(), {
+      session,
+    });
   });
 
   it("saves an actual in the guarded transaction", async () => {
@@ -146,6 +159,8 @@ describe("monthly lock enforcement", () => {
     });
 
     expect(response.status).toBe(201);
-    expect(mocks.actualCreate).toHaveBeenCalledWith(expect.anything(), { session });
+    expect(mocks.actualCreate).toHaveBeenCalledWith(expect.anything(), {
+      session,
+    });
   });
 });
