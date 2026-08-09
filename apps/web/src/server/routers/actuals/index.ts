@@ -1,4 +1,5 @@
 import { Actual } from "@crossval/db/models/actual.model";
+import { PeriodLock } from "@crossval/db/models/period-lock.model";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
@@ -39,13 +40,20 @@ actualsRouter.post(
   }),
   async (c) => {
     const input = c.req.valid("json");
+    const userId = c.get("userId");
+    const periodIsLocked = await PeriodLock.exists({ userId, month: input.month });
+
+    if (periodIsLocked) {
+      return c.json({ error: `Actuals for ${input.month} are locked` }, 423);
+    }
+
     const amountCents = amountToCents(input.amount);
     if (!Number.isSafeInteger(amountCents)) {
       return c.json({ error: "Amount is too large" }, 400);
     }
 
     const actual = await Actual.create({
-      userId: c.get("userId"),
+      userId,
       categoryId: input.categoryId,
       month: input.month,
       amountCents,

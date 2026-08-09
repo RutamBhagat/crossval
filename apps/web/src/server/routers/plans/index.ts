@@ -1,4 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
+import { PeriodLock } from "@crossval/db/models/period-lock.model";
 import { Plan } from "@crossval/db/models/plan.model";
 import { Hono } from "hono";
 
@@ -38,12 +39,18 @@ plansRouter.put(
   }),
   async (c) => {
     const input = c.req.valid("json");
+    const userId = c.get("userId");
+    const periodIsLocked = await PeriodLock.exists({ userId, month: input.month });
+
+    if (periodIsLocked) {
+      return c.json({ error: `Plans for ${input.month} are locked` }, 423);
+    }
+
     const amountCents = amountToCents(input.amount);
     if (!Number.isSafeInteger(amountCents)) {
       return c.json({ error: "Amount is too large" }, 400);
     }
 
-    const userId = c.get("userId");
     const plan = await Plan.findOneAndUpdate(
       {
         userId,
