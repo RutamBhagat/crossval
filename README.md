@@ -74,20 +74,31 @@ The report shows `N/A` for the variance percentage when the plan is zero. This p
 
 Locks apply to one calendar month and to one user. A locked month makes its plans and actuals read-only. The interface disables the related inputs, and the API rejects write requests with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
 
+## CSV import
+
+Use **Import CSV** in the Actual spend card. The file must contain these headers:
+
+```csv
+month,category,amount
+2026-01,Marketing,4800
+```
+
+The import checks the month, category, and amount in each row. Category names are not case-sensitive. The API rejects the file if a row is invalid or uses a locked month.
+
 ## Assumptions and tradeoffs
 
 - The application uses calendar months in `YYYY-MM` format. It does not support fiscal periods.
 - All amounts use USD. The database stores nonnegative amounts as whole cents to prevent floating-point rounding errors.
 - Marketing, Payroll, and Tools are a fixed seed list. Category CRUD is out of scope for this version.
 - Each user can have one plan for each category and month. A user can add multiple actual entries, and the report adds them together.
-- This version uses manual actual entry instead of CSV import.
+- CSV import accepts one file at a time. It does not provide a preview or partial-row import.
 - Locks cannot be removed. This keeps the first locking workflow small, but an administrator or controlled lock removal process would be necessary for corrections.
 
 ## Production improvements
 
 Make these changes before production use:
 
-- Add category management and CSV import.
+- Add category management, CSV previews, and import history.
 
 - Add an audited lock removal process with clear user permissions.
 

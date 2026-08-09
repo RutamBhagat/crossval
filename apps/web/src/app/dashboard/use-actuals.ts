@@ -44,6 +44,22 @@ async function createActual(input: ActualInput) {
   }
 }
 
+async function importActuals(file: File) {
+  const body = new FormData();
+  body.set("file", file);
+  const response = await fetch("/api/actuals/import", {
+    method: "POST",
+    body,
+  });
+  const data = (await response.json()) as { imported?: number; error?: string };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Actuals could not be imported");
+  }
+
+  return data.imported ?? 0;
+}
+
 export function useActuals() {
   const queryClient = useQueryClient();
   const { data: session, isPending: isSessionPending } = authClient.useSession();
@@ -72,11 +88,24 @@ export function useActuals() {
     },
     onError: (error) => toast.error(error.message),
   });
+  const importActualsMutation = useMutation({
+    mutationFn: importActuals,
+    onSuccess: (count) => {
+      void queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({
+        queryKey: ["reports", session?.user.id],
+      });
+      toast.success(`${count} actual ${count === 1 ? "row" : "rows"} imported`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   return {
     actuals: actualsQuery.data ?? [],
     isLoading: isSessionPending || actualsQuery.isLoading,
     isSaving: createActualMutation.isPending,
+    isImporting: importActualsMutation.isPending,
     createActual: createActualMutation.mutate,
+    importActuals: importActualsMutation.mutateAsync,
   };
 }

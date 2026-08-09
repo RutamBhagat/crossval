@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@crossval/ui/components/badge";
 import { Button } from "@crossval/ui/components/button";
 import {
   Card,
@@ -27,8 +26,8 @@ import {
 } from "@crossval/ui/components/select";
 import { Separator } from "@crossval/ui/components/separator";
 import { Skeleton } from "@crossval/ui/components/skeleton";
-import { ChevronDown, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Loader2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { getCategoryName } from "@/lib/categories";
 import { formatCurrency } from "@/lib/formatters";
@@ -89,7 +88,9 @@ export function MonthlyActualCard() {
     label: category.name,
     value: category.id,
   }));
-  const { actuals, isLoading, isSaving, createActual } = useActuals();
+  const { actuals, isImporting, isLoading, isSaving, createActual, importActuals } =
+    useActuals();
+  const importInputRef = useRef<HTMLInputElement>(null);
   const { locks, isLoading: locksAreLoading } = useLocks();
   const actualGroups = groupActuals(actuals);
   const monthIsLocked = locks.some((lock) => lock.month === month);
@@ -100,7 +101,37 @@ export function MonthlyActualCard() {
         <CardTitle>Log actual spend</CardTitle>
         <CardDescription>Record what was spent for a category and month.</CardDescription>
         <CardAction>
-          <Badge variant="outline">Actual</Badge>
+          <Input
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(event) => {
+              const input = event.currentTarget;
+              const file = input.files?.[0];
+              if (!file) return;
+
+              void importActuals(file)
+                .catch(() => undefined)
+                .finally(() => {
+                  input.value = "";
+                });
+            }}
+            ref={importInputRef}
+            type="file"
+          />
+          <Button
+            disabled={isImporting}
+            onClick={() => importInputRef.current?.click()}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {isImporting ? (
+              <Loader2 className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <Upload data-icon="inline-start" />
+            )}
+            Import CSV
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
