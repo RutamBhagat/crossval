@@ -16,8 +16,8 @@ https://crossval-web-five.vercel.app/
 
 Production stack:
 
-- Vercel — Next.js application
-- MongoDB Atlas — production database
+- Vercel: Next.js application
+- MongoDB Atlas: production database
 
 The Docker Compose MongoDB configuration is only for local development.
 
@@ -79,17 +79,19 @@ The report treats a missing actual as zero. It shows `$0.00` in the Actual colum
 
 ### Zero or missing plan
 
-The report includes actual spending that has no plan for the same category and month. It treats the missing plan as zero, so unplanned spending remains visible in the report, chart, and CSV export. Category-month combinations with no plan and no actual are not shown.
+The report includes actual spending that has no plan for the same category and month. It treats the missing plan as zero, so unplanned spending remains visible in the report, chart, and CSV export. The report omits category-month combinations that have no plan and no actual.
 
 The report shows `N/A` for the variance percentage when the plan is zero or missing. This prevents division by zero. It still calculates the amount variance as `Actual - Plan`.
 
 ### Fiscal-year range
 
-The report has previous and next fiscal-year controls, so no fixed year list requires maintenance. Fiscal years use the calendar year from January through December. A user can still select start and end months directly; the fiscal-year control then shows **Custom range**.
+The report has previous and next fiscal-year controls, so no fixed year list requires maintenance. Fiscal years use the calendar year from January through December. A user can still select start and end months directly. The fiscal-year control then shows **Custom range**.
 
 ### Monthly locking
 
-Locks apply to one calendar month and to one user. A locked month makes its plans and actuals read-only. The lock state and each plan, actual, or CSV write use the same MongoDB transaction guard. Thus, a write cannot commit after a concurrent request closes its month. The interface disables the related inputs, and the API rejects write requests with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
+Locks apply to one calendar month and one user. A locked month makes its plans and actuals read-only. Plan saves, actual saves, and CSV imports use MongoDB transactions. Each transaction checks and updates the period state before it writes data. Closing a month updates the same period state. MongoDB serializes these updates, so a write cannot commit after a concurrent request closes its month.
+
+The interface disables the related inputs. The API rejects writes with HTTP status `423` and a clear error message. The current version does not support unlocking a month.
 
 ### CSV export
 
@@ -104,16 +106,21 @@ month,category,amount
 2026-01,Marketing,4800
 ```
 
-The import checks the month, category, and amount in each row. Category names are not case-sensitive. The API rejects the file if a row is invalid or uses a locked month.
+The import checks the month, category, and amount in each row. The import accepts category names in any letter case. The API rejects the file if a row is invalid or uses a locked month.
 
 ## Assumptions and tradeoffs
 
-- The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December; custom fiscal-year start months are out of scope.
+- The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December. Custom fiscal-year start months are out of scope.
+
 - All amounts use USD. The database stores nonnegative amounts as whole cents to prevent floating-point rounding errors.
+
 - Marketing, Payroll, and Tools are a fixed seed list. Category CRUD is out of scope for this version.
+
 - Each user can have one plan for each category and month. A user can add multiple actual entries, and the report adds them together.
-- CSV import accepts one file at a time. It does not provide a preview or partial-row import.
-- Locks cannot be removed. This keeps the first locking workflow small, but an administrator or controlled lock removal process would be necessary for corrections.
+
+- CSV import accepts one file at a time. It has no preview and rejects the full file if one row is invalid.
+
+- Users cannot remove locks. An administrator or controlled lock removal process would be necessary for corrections.
 
 ## Production improvements
 
