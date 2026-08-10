@@ -10,9 +10,13 @@ Install these tools before you start:
 - [pnpm](https://pnpm.io/) 11.12.0
 - [Docker](https://www.docker.com/) with Docker Compose
 
+## Demo Video
+
+[youtu.be/sgNpNzABpfw](https://youtu.be/sgNpNzABpfw)
+
 ## Live deployment
 
-https://crossval-web-five.vercel.app/
+[crossval-web-five.vercel.app](https://crossval-web-five.vercel.app/)
 
 Production stack:
 
@@ -32,33 +36,27 @@ The Docker Compose MongoDB configuration is only for local development.
    ```bash
    pnpm install
    ```
-
 2. Copy the example environment file:
 
    ```bash
    cp apps/web/.env.example apps/web/.env
    ```
-
 3. Generate an authentication secret:
 
    ```bash
    openssl rand -base64 32
    ```
-
 4. Replace `xxx` in `apps/web/.env` with the generated secret.
-
 5. Start MongoDB:
 
    ```bash
    pnpm db:start
    ```
-
 6. Start the web application:
 
    ```bash
    pnpm dev:web
    ```
-
 7. Open [http://localhost:3000](http://localhost:3000).
 
 The local MongoDB database requires Docker. It runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses this connection:
@@ -123,15 +121,10 @@ The import checks the month, category, and amount in each row. The import accept
 ## Assumptions and tradeoffs
 
 - The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December. Custom fiscal-year start months are out of scope.
-
 - All amounts use USD. The database stores nonnegative amounts as whole cents to prevent floating-point rounding errors.
-
 - Marketing, Payroll, and Tools are a fixed seed list. Category CRUD is out of scope for this version.
-
 - Each user can have one plan for each category and month. A user can add multiple actual entries, and the report adds them together.
-
 - CSV import accepts one file at a time. It has no preview and rejects the full file if one row is invalid.
-
 - Users cannot remove locks. An administrator or controlled lock removal process would be necessary for corrections.
 
 ## Production improvements
@@ -139,17 +132,11 @@ The import checks the month, category, and amount in each row. The import accept
 Make these changes before production use:
 
 - Add category management, CSV previews, and import history.
-
 - Add an audited lock removal process with clear user permissions.
-
 - Add rate limits and stronger password controls.
-
 - Add request logs, error monitoring, and service health checks.
-
 - Configure and verify MongoDB Atlas backups. Test database recovery.
-
 - Add more integration and browser tests for authentication and report workflows.
-
 - Complete an accessibility and security review.
 
 ## Query approach at larger scale
