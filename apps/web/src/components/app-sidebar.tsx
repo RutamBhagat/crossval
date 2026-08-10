@@ -54,7 +54,7 @@ export function AppSidebar() {
                 alt="Crossval"
                 className="size-8 shrink-0 object-contain"
                 height={32}
-                src="/logo.png"
+                src="/logo.svg"
                 width={32}
               />
               <span className="truncate font-mono text-sm font-semibold">

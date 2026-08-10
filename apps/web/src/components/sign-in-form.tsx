@@ -1,14 +1,17 @@
+"use client";
+
 import { Button } from "@crossval/ui/components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@crossval/ui/components/card";
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@crossval/ui/components/field";
 import { Input } from "@crossval/ui/components/input";
-import { Label } from "@crossval/ui/components/label";
 import { useForm } from "@tanstack/react-form";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import z from "zod";
@@ -17,11 +20,7 @@ import { authClient } from "@/lib/auth-client";
 
 import Loader from "./loader";
 
-export default function SignInForm({
-  onSwitchToSignUp,
-}: {
-  onSwitchToSignUp: () => void;
-}) {
+export default function SignInForm() {
   const router = useRouter();
   const { isPending } = authClient.useSession();
 
@@ -60,76 +59,70 @@ export default function SignInForm({
   }
 
   return (
-    <Card className="w-full shadow-xs">
-      <CardHeader className="border-b">
-        <CardTitle>Welcome back</CardTitle>
-        <CardDescription>
-          Sign in to continue to your planning workspace.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit();
+    <form
+      className="flex flex-col gap-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        form.handleSubmit();
+      }}
+    >
+      <FieldGroup>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="text-2xl font-bold">Sign in to CrossVal</h1>
+          <p className="text-balance text-sm text-muted-foreground">
+            Enter your details to open your planning workspace.
+          </p>
+        </div>
+
+        <form.Field name="email">
+          {(field) => {
+            const invalid = field.state.meta.errors.length > 0;
+
+            return (
+              <Field data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                <Input
+                  aria-invalid={invalid}
+                  autoComplete="email"
+                  id={field.name}
+                  name={field.name}
+                  placeholder="name@company.com"
+                  type="email"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                <FieldError errors={field.state.meta.errors} />
+              </Field>
+            );
           }}
-          className="space-y-4"
-        >
-          <div>
-            <form.Field name="email">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>Email</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    type="email"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                  />
-                  {field.state.meta.errors.map((error) => (
-                    <p
-                      key={error?.message}
-                      className="text-xs text-destructive"
-                      role="alert"
-                    >
-                      {error?.message}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </form.Field>
-          </div>
+        </form.Field>
 
-          <div>
-            <form.Field name="password">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>Password</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    type="password"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                  />
-                  {field.state.meta.errors.map((error) => (
-                    <p
-                      key={error?.message}
-                      className="text-xs text-destructive"
-                      role="alert"
-                    >
-                      {error?.message}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </form.Field>
-          </div>
+        <form.Field name="password">
+          {(field) => {
+            const invalid = field.state.meta.errors.length > 0;
 
+            return (
+              <Field data-invalid={invalid}>
+                <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                <Input
+                  aria-invalid={invalid}
+                  autoComplete="current-password"
+                  id={field.name}
+                  name={field.name}
+                  type="password"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                <FieldError errors={field.state.meta.errors} />
+              </Field>
+            );
+          }}
+        </form.Field>
+
+        <Field>
           <form.Subscribe
             selector={(state) => ({
               canSubmit: state.canSubmit,
@@ -137,23 +130,20 @@ export default function SignInForm({
             })}
           >
             {({ canSubmit, isSubmitting }) => (
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={!canSubmit || isSubmitting}
-              >
+              <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting && (
+                  <Loader2 className="animate-spin" data-icon="inline-start" />
+                )}
                 {isSubmitting ? "Signing in…" : "Sign in"}
               </Button>
             )}
           </form.Subscribe>
-        </form>
+        </Field>
 
-        <div className="mt-4 text-center">
-          <Button variant="link" onClick={onSwitchToSignUp}>
-            Need an account? Create one
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        <FieldDescription className="text-center">
+          Need an account? <Link href="/signup">Create one</Link>
+        </FieldDescription>
+      </FieldGroup>
+    </form>
   );
 }

@@ -25,7 +25,7 @@ function WorkspaceBrandTrigger() {
         alt=""
         className="size-6 shrink-0 object-contain"
         height={24}
-        src="/logo.png"
+        src="/logo.svg"
         width={24}
       />
       <span className="font-mono text-xs font-semibold tracking-tight">
@@ -57,7 +57,7 @@ export default function Header({ withSidebar = false }: HeaderProps) {
             alt=""
             className="size-6 shrink-0 object-contain"
             height={24}
-            src="/logo.png"
+            src="/logo.svg"
             width={24}
           />
           CrossVal
