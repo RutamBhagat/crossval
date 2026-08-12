@@ -3,15 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/server.mjs",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsdown",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "test:watch": "vitest",
-    "start": "node dist/index.mjs"
+    "start": "node dist/server.mjs"
   },
   "dependencies": {
     "@crossval/auth": "workspace:*",

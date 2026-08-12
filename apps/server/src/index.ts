@@ -1,4 +1,3 @@
-import { serve } from "@hono/node-server";
 import { auth } from "@crossval/auth";
 import { env } from "@crossval/env/server";
 import { Hono } from "hono";
@@ -32,15 +31,5 @@ app.route("/reports", reportsRouter);
 
 app.get("/", (c) => c.text("OK"));
 
-serve(
-  {
-    fetch: app.fetch,
-    hostname: env.HOST,
-    port: env.PORT,
-  },
-  (info) => {
-    console.log(`Server is running on http://${info.address}:${info.port}`);
-  },
-);
-
 export { app };
+export default app;

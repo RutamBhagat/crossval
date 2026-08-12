@@ -1,0 +1,135 @@
+name: Deploy server to OCI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-oci-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter server check-types
+      - run: pnpm --filter server test
+      - run: pnpm --filter server build
+
+  build-and-deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      OCI_HOST: ${{ secrets.OCI_HOST }}
+      OCI_USER: ${{ secrets.OCI_USER }}
+      OCI_PORT: ${{ secrets.OCI_SSH_PORT || '22' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image name
+        id: image
+        shell: bash
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-server" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/server/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure SSH
+        env:
+          OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$OCI_SSH_KEY" > ~/.ssh/id_oci
+          chmod 600 ~/.ssh/id_oci
+          printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Authenticate OCI VM to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh -p "$OCI_PORT" -i ~/.ssh/id_oci \
+            "$OCI_USER@$OCI_HOST" \
+            "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
+
+      - name: Deploy image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+        run: |
+          ssh -p "$OCI_PORT" -i ~/.ssh/id_oci "$OCI_USER@$OCI_HOST" \
+            'bash -s' -- "$IMAGE" <<'DEPLOY'
+          set -euo pipefail
+
+          image="$1"
+          container="crossval-server"
+          previous="${container}-previous"
+          env_file="/opt/crossval/server.env"
+
+          test -f "$env_file"
+          docker pull "$image"
+          docker rm -f "$previous" 2>/dev/null || true
+
+          if docker container inspect "$container" >/dev/null 2>&1; then
+            docker rename "$container" "$previous"
+            docker stop "$previous"
+          fi
+
+          rollback() {
+            docker logs "$container" 2>&1 || true
+            docker rm -f "$container" 2>/dev/null || true
+            if docker container inspect "$previous" >/dev/null 2>&1; then
+              docker rename "$previous" "$container"
+              docker start "$container"
+            fi
+            exit 1
+          }
+
+          docker run -d \
+            --name "$container" \
+            --restart unless-stopped \
+            --env-file "$env_file" \
+            -p 3001:3001 \
+            "$image" || rollback
+
+          for _ in $(seq 1 12); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' "$container")
+            case "$status" in
+              healthy) docker rm -f "$previous" 2>/dev/null || true; exit 0 ;;
+              unhealthy) rollback ;;
+            esac
+            sleep 5
+          done
+
+          rollback
+          DEPLOY
