@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { categories as fallbackCategories } from "@crossval/domain/categories";
+import { env } from "@crossval/env/web";
 
 type Category = (typeof fallbackCategories)[number];
 
@@ -10,7 +11,10 @@ function useCategories() {
   const query = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const response = await fetch("/api/categories");
+      const response = await fetch(
+        `${env.NEXT_PUBLIC_SERVER_URL}/api/categories`,
+        { credentials: "include" },
+      );
       const data = (await response.json()) as {
         categories?: Category[];
         error?: string;

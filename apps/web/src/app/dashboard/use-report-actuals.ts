@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
+import { env } from "@crossval/env/web";
 
 export type ReportActual = {
   id: string;
@@ -13,7 +14,10 @@ export type ReportActual = {
 
 async function getReportActuals(categoryId: string, month: string) {
   const query = new URLSearchParams({ categoryId, month });
-  const response = await fetch(`/api/reports/actuals?${query}`);
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_SERVER_URL}/api/reports/actuals?${query}`,
+    { credentials: "include" },
+  );
   const data = (await response.json()) as {
     actuals?: ReportActual[];
     error?: string;
