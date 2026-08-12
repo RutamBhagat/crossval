@@ -10,6 +10,8 @@
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
     "check-types": "pnpm -r check-types",
+    "deploy": "vercel deploy",
+    "deploy:prod": "vercel deploy --prod",
     "test": "pnpm --filter server test",
     "test:watch": "pnpm --filter server test:watch",
     "test:integration": "pnpm --filter @crossval/db test:integration && pnpm --filter server test:integration",

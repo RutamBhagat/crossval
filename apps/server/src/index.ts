@@ -29,7 +29,7 @@ app.route("/locks", locksRouter);
 app.route("/plans", plansRouter);
 app.route("/reports", reportsRouter);
 
-app.get("/", (c) => c.text("OK"));
+app.get("/health", (c) => c.json({ status: "ok" }));
 
 export { app };
 export default app;
