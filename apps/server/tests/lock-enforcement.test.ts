@@ -27,8 +27,8 @@ vi.mock("@crossval/db/models/actual.model", () => ({
   Actual: { create: mocks.actualCreate, insertMany: mocks.actualInsertMany },
 }));
 
-import { actualsRouter } from "../src/server/routers/actuals";
-import { plansRouter } from "../src/server/routers/plans";
+import { actualsRouter } from "../src/routers/actuals";
+import { plansRouter } from "../src/routers/plans";
 
 function allowWrites() {
   const session = { id: "session-1" };

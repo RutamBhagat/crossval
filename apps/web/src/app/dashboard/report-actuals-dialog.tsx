@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@crossval/ui/components/table";
 
-import { getCategoryName } from "@/lib/categories";
+import { getCategoryName } from "@crossval/domain/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { useReportActuals } from "./use-report-actuals";

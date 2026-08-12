@@ -22,7 +22,7 @@ import { connection } from "@crossval/db";
 import { Actual } from "@crossval/db/models/actual.model";
 import { Plan } from "@crossval/db/models/plan.model";
 
-import { reportsRouter } from "../src/server/routers/reports";
+import { reportsRouter } from "../src/routers/reports";
 
 const testUserIds = new Set<string>();
 

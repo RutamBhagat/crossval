@@ -1,1 +1,1 @@
-export type { MonthlyVariance, ReportRow } from "@/server/report";
+export type { MonthlyVariance, ReportRow } from "@crossval/domain/report";

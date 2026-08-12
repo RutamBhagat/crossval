@@ -3,7 +3,7 @@ import { closePeriod } from "@crossval/db/period-state";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
-import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
+import { requireAuth, type AuthVariables } from "@/middleware/auth";
 
 import { lockInputSchema } from "./schema";
 

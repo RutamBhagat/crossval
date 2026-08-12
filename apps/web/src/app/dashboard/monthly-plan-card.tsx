@@ -34,7 +34,7 @@ import { cn } from "@crossval/ui/lib/utils";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { getCategoryName } from "@/lib/categories";
+import { getCategoryName } from "@crossval/domain/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";

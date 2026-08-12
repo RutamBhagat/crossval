@@ -28,9 +28,9 @@ vi.mock("@crossval/db/models/actual.model", () => ({
   },
 }));
 
-import { actualsRouter } from "../src/server/routers/actuals";
-import { plansRouter } from "../src/server/routers/plans";
-import { reportsRouter } from "../src/server/routers/reports";
+import { actualsRouter } from "../src/routers/actuals";
+import { plansRouter } from "../src/routers/plans";
+import { reportsRouter } from "../src/routers/reports";
 
 type RecordWithUser = {
   _id: string;

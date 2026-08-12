@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-import { categories } from "@/lib/categories";
-import { paginationQuerySchema } from "@/server/pagination";
+import { categories } from "@crossval/domain/categories";
+
+import { paginationQuerySchema } from "@/pagination";
 
 const monthSchema = z
   .string()

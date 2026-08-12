@@ -6,25 +6,16 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "check-types": "tsc --noEmit",
-    "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.mts",
-    "test:watch": "vitest",
     "start": "next start"
   },
   "dependencies": {
-    "@crossval/auth": "workspace:*",
-    "@crossval/db": "workspace:*",
-    "@crossval/env": "workspace:*",
+    "@crossval/domain": "workspace:*",
     "@crossval/ui": "workspace:*",
-    "@hono/zod-validator": "^0.9.0",
     "@swc/helpers": "^0.5.23",
     "@tanstack/react-form": "^1.33.2",
     "@tanstack/react-query": "^5.101.4",
     "babel-plugin-react-compiler": "^1.0.0",
     "better-auth": "catalog:",
-    "csv-parse": "^7.0.2",
-    "dotenv": "catalog:",
-    "hono": "^4.12.32",
     "lucide-react": "catalog:",
     "next": "^16.2.12",
     "react": "catalog:",
@@ -40,7 +31,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "^4.1.10"
+    "typescript": "catalog:"
   }
 }

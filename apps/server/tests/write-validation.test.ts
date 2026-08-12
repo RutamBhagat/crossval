@@ -26,8 +26,8 @@ vi.mock("@crossval/db/models/actual.model", () => ({
   Actual: { create: mocks.actualCreate },
 }));
 
-import { actualsRouter } from "../src/server/routers/actuals";
-import { plansRouter } from "../src/server/routers/plans";
+import { actualsRouter } from "../src/routers/actuals";
+import { plansRouter } from "../src/routers/plans";
 
 const writeEndpoints = [
   { name: "plan", router: plansRouter, method: "PUT" },

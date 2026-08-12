@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { getCategoryName } from "@/lib/categories";
+import { getCategoryName } from "@crossval/domain/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";

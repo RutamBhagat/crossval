@@ -4,9 +4,10 @@ import { zValidator } from "@hono/zod-validator";
 import { parse } from "csv-parse/sync";
 import { Hono } from "hono";
 
-import { categories } from "@/lib/categories";
-import { amountToCents } from "@/server/money";
-import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
+import { categories } from "@crossval/domain/categories";
+
+import { amountToCents } from "@/money";
+import { requireAuth, type AuthVariables } from "@/middleware/auth";
 
 import { actualInputSchema, actualsQuerySchema } from "./schema";
 

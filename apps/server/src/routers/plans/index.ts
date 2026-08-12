@@ -3,8 +3,8 @@ import { Plan } from "@crossval/db/models/plan.model";
 import { runIfPeriodsOpen } from "@crossval/db/period-state";
 import { Hono } from "hono";
 
-import { amountToCents } from "@/server/money";
-import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
+import { amountToCents } from "@/money";
+import { requireAuth, type AuthVariables } from "@/middleware/auth";
 
 import { planInputSchema, plansQuerySchema } from "./schema";
 

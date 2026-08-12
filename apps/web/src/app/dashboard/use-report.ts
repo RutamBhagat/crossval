@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
-import type { MonthlyVariance, ReportRow } from "@/server/report";
+import type { MonthlyVariance, ReportRow } from "@crossval/domain/report";
 
 export type ReportSortKey = "month" | "category" | "target";
 export type ReportSortDirection = "ascending" | "descending";

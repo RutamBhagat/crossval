@@ -23,8 +23,9 @@ import {
   buildMonthlyVariance,
   buildReportCsv,
   buildReportRows,
-} from "../src/server/report";
-import { reportsRouter } from "../src/server/routers/reports";
+} from "@crossval/domain/report";
+
+import { reportsRouter } from "../src/routers/reports";
 
 describe("report aggregation", () => {
   beforeEach(() => {
@@ -261,7 +262,8 @@ describe("report range validation", () => {
     const response = await reportsRouter.request(path);
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error).toEqual(expect.any(String));
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toEqual(expect.any(String));
     expect(mocks.actualAggregate).not.toHaveBeenCalled();
   });
 });

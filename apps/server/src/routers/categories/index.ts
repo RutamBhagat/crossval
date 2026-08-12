@@ -1,7 +1,7 @@
+import { categories } from "@crossval/domain/categories";
 import { Hono } from "hono";
 
-import { categories } from "@/lib/categories";
-import { requireAuth, type AuthVariables } from "@/server/middleware/auth";
+import { requireAuth, type AuthVariables } from "@/middleware/auth";
 
 const categoriesRouter = new Hono<{ Variables: AuthVariables }>();
 

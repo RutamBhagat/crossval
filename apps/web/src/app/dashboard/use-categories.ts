@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { categories as fallbackCategories } from "@/lib/categories";
+import { categories as fallbackCategories } from "@crossval/domain/categories";
 
 type Category = (typeof fallbackCategories)[number];
 

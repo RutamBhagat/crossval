@@ -21,7 +21,7 @@ vi.mock("@crossval/db/models/actual.model", () => ({
   Actual: { insertMany: mocks.insertMany },
 }));
 
-import { actualsRouter } from "../src/server/routers/actuals";
+import { actualsRouter } from "../src/routers/actuals";
 
 function csvRequest(csv: string) {
   const body = new FormData();
