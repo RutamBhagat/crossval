@@ -10,7 +10,7 @@ import { locksRouter } from "@/routers/locks";
 import { plansRouter } from "@/routers/plans";
 import { reportsRouter } from "@/routers/reports";
 
-const app = new Hono().basePath("/api");
+const app = new Hono().basePath("/crossval/api");
 
 app.use(logger());
 app.use(
