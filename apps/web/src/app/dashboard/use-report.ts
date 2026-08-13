@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
 import type { MonthlyVariance, ReportRow } from "@crossval/domain/report";
-import { env } from "@crossval/env/web";
 
 export type ReportSortKey = "month" | "category" | "target";
 export type ReportSortDirection = "ascending" | "descending";
@@ -27,7 +26,7 @@ async function getReport(
     direction,
   });
   const response = await fetch(
-    `${env.NEXT_PUBLIC_SERVER_URL}/api/reports?${query}`,
+    `/api/reports?${query}`,
     { credentials: "include" },
   );
   const data = (await response.json()) as {

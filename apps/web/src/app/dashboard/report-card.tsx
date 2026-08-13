@@ -40,7 +40,6 @@ import {
 import { useState } from "react";
 
 import { getCategoryName } from "@crossval/domain/categories";
-import { env } from "@crossval/env/web";
 import {
   formatCurrency,
   formatSignedCurrency,
@@ -156,7 +155,7 @@ export function ReportCard() {
     });
 
     window.location.assign(
-      `${env.NEXT_PUBLIC_SERVER_URL}/api/reports/export?${query}`,
+      `/api/reports/export?${query}`,
     );
   }
 

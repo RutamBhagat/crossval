@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
-import { env } from "@crossval/env/web";
 
 type Plan = {
   id: string;
@@ -35,7 +34,7 @@ async function getPlans(
     direction,
   });
   const response = await fetch(
-    `${env.NEXT_PUBLIC_SERVER_URL}/api/plans?${query}`,
+    `/api/plans?${query}`,
     { credentials: "include" },
   );
   const data = (await response.json()) as {
@@ -52,7 +51,7 @@ async function getPlans(
 }
 
 async function savePlan(input: PlanInput) {
-  const response = await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/api/plans`, {
+  const response = await fetch("/api/plans", {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

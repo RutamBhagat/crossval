@@ -5,16 +5,28 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import Header from "@/components/header";
-import { authClient } from "@/lib/auth-client";
+import { createCrossvalAuthClient } from "@/lib/auth-client";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const session = await authClient.getSession({
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+
+  if (!host) {
+    throw new Error("Cannot determine the request host");
+  }
+
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    (process.env.NODE_ENV === "production" ? "https" : "http");
+  const serverAuthClient = createCrossvalAuthClient(`${protocol}://${host}`);
+  const session = await serverAuthClient.getSession({
     fetchOptions: {
-      headers: await headers(),
+      headers: requestHeaders,
       throw: true,
     },
   });

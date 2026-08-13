@@ -2,11 +2,11 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
 export const env = createEnv({
-  client: {
-    NEXT_PUBLIC_SERVER_URL: z.url().default("http://localhost:8000/crossval"),
+  server: {
+    API_UPSTREAM_URL: z.url().default("http://localhost:8000/crossval"),
   },
   runtimeEnv: {
-    NEXT_PUBLIC_SERVER_URL: process.env.NEXT_PUBLIC_SERVER_URL,
+    API_UPSTREAM_URL: process.env.API_UPSTREAM_URL,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

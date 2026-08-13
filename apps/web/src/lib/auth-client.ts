@@ -1,7 +1,12 @@
-import { env } from "@crossval/env/web";
 import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_SERVER_URL,
-  fetchOptions: { credentials: "include" },
-});
+export function createCrossvalAuthClient(baseURL: string) {
+  return createAuthClient({
+    baseURL,
+    fetchOptions: { credentials: "include" },
+  });
+}
+
+export const authClient = createCrossvalAuthClient(
+  typeof window === "undefined" ? "http://localhost:3000" : window.location.origin,
+);

@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
-import { env } from "@crossval/env/web";
 
 type Actual = {
   id: string;
@@ -36,7 +35,7 @@ async function getActuals(
     sort,
     direction,
   });
-  const response = await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/api/actuals?${query}`, {
+  const response = await fetch(`/api/actuals?${query}`, {
     credentials: "include",
   });
   const data = (await response.json()) as {
@@ -53,7 +52,7 @@ async function getActuals(
 }
 
 async function createActual(input: ActualInput) {
-  const response = await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/api/actuals`, {
+  const response = await fetch("/api/actuals", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -69,7 +68,7 @@ async function createActual(input: ActualInput) {
 async function importActuals(file: File) {
   const body = new FormData();
   body.set("file", file);
-  const response = await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/api/actuals/import`, {
+  const response = await fetch("/api/actuals/import", {
     method: "POST",
     credentials: "include",
     body,

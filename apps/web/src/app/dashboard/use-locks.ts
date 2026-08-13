@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
-import { env } from "@crossval/env/web";
 
 type PeriodLock = {
   id: string;
@@ -12,7 +11,7 @@ type PeriodLock = {
 };
 
 async function getLocks() {
-  const response = await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/api/locks`, {
+  const response = await fetch("/api/locks", {
     credentials: "include",
   });
   const data = (await response.json()) as {
@@ -28,7 +27,7 @@ async function getLocks() {
 }
 
 async function lockMonth(month: string) {
-  const response = await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/api/locks`, {
+  const response = await fetch("/api/locks", {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
