@@ -16,7 +16,13 @@ Install these tools before you start:
 
 ## Live deployment
 
+### Frontend
+
 [crossval-web-five.vercel.app](https://crossval-web-five.vercel.app/)
+
+### Backend
+
+[92.5.160.137/crossval](https://92.5.160.137/crossval)
 
 Production stack:
 
