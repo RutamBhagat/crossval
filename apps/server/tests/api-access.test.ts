@@ -13,6 +13,10 @@ vi.mock("@crossval/auth", () => ({
   auth: { api: { getSession: mocks.getSession } },
 }));
 
+vi.mock("@crossval/db/period-state", () => ({
+  runIfPeriodsOpen: vi.fn(),
+}));
+
 vi.mock("@crossval/db/models/plan.model", () => ({
   Plan: {
     find: mocks.planFind,
