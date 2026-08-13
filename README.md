@@ -20,12 +20,17 @@ Install these tools before you start:
 
 Production stack:
 
-- Vercel: Next.js frontend and backend
+- Vercel: Next.js frontend
+- Oracle Cloud Infrastructure (OCI): Hono API on a compute instance
 - MongoDB Atlas: production database
 
-### Why Vercel instead of EC2
+### Deployment architecture
 
-I chose Vercel because the frontend and backend are one Next.js application. The expected workload does not justify the cost of managing an EC2 instance. Vercel handles deployment and scaling. MongoDB Atlas supports the database transactions that the application requires.
+The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API. The `API_UPSTREAM_URL` environment variable sets this upstream URL.
+
+The OCI instance runs the built `apps/server` application as a systemd service on port `8000`. MongoDB Atlas supports the transactions that enforce month locks.
+
+A push to `main` starts the OCI deployment workflow. GitHub Actions checks the server types, runs its tests, and builds it before deployment. The workflow uploads a source archive, installs a versioned release under `/opt/crossval/releases`, and switches the `current` symlink. It checks `/api/health` after restart and restores the prior release if the check fails.
 
 The Docker Compose MongoDB configuration is only for local development.
 
@@ -47,7 +52,7 @@ The Docker Compose MongoDB configuration is only for local development.
    ```bash
    openssl rand -base64 32
    ```
-4. Replace `xxx` in `apps/server/.env` with the generated secret.
+4. Set `BETTER_AUTH_SECRET` in `apps/server/.env` to the generated secret.
 5. Start MongoDB:
 
    ```bash
@@ -135,7 +140,7 @@ Make these changes before production use:
 - Add category management, CSV previews, and import history.
 - Add an audited lock removal process with clear user permissions.
 - Add rate limits and stronger password controls.
-- Add request logs, error monitoring, and service health checks.
+- Add centralized request logs, error monitoring, and external health monitoring.
 - Configure and verify MongoDB Atlas backups. Test database recovery.
 - Add more integration and browser tests for authentication and report workflows.
 - Complete an accessibility and security review.
@@ -154,86 +159,26 @@ The dashboard plan, actual, and report lists use offset and limit pagination. Th
 
 ## Tests
 
-```bash
-pnpm run test
-$ pnpm --filter web test
-$ vitest run
-
- RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/apps/web
-
- ✓ tests/report.test.ts (15 tests) 27ms
- ✓ tests/write-validation.test.ts (12 tests) 20ms
- ✓ tests/actual-import.test.ts (10 tests) 28ms
- ✓ tests/lock-enforcement.test.ts (5 tests) 27ms
- ✓ tests/api-access.test.ts (4 tests) 17ms
-
- ✓ tests/report.integration.test.ts (1 test) 732ms
-     ✓ calculates report rows in MongoDB without leaking another user's data  447ms
-
- Test Files  6 passed (6)
-      Tests  47 passed (47)
-   Start at  00:42:04
-   Duration  2.48s (transform 224ms, setup 0ms, import 3.41s, tests 851ms, environment 0ms)
-```
+Run the server unit tests:
 
 ```bash
-pnpm run test:integration
-$ pnpm --filter @crossval/db test:integration && pnpm --filter web test:integration
-$ vitest run --config vitest.integration.config.mts
-
- RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/packages/db
-
- ✓ tests/period-state.integration.test.ts (4 tests) 285ms
-   ✓ period-state transaction integration (4)
-     ✓ rolls back the guard and does not write when one period is locked 28ms
-     ✓ makes close wait for an in-flight guarded write, then leaves the period locked 120ms
-     ✓ serializes the first guarded write with the first close 123ms
-     ✓ rejects a guarded write after close commits 10ms
-
- Test Files  1 passed (1)
-      Tests  4 passed (4)
-   Start at  00:43:07
-   Duration  467ms (transform 22ms, setup 9ms, import 114ms, tests 285ms, environment 0ms)
-
-$ vitest run --config vitest.integration.config.mts
-
- RUN  v4.1.10 /Users/voldemort/Downloads/code/job-assignment/crossval/apps/web
-
- ✓ tests/report.integration.test.ts (1 test) 41ms
-   ✓ report MongoDB aggregation integration (1)
-     ✓ calculates report rows in MongoDB without leaking another user's data 38ms
-
- Test Files  1 passed (1)
-      Tests  1 passed (1)
-   Start at  00:43:08
-   Duration  222ms (transform 30ms, setup 10ms, import 119ms, tests 41ms, environment 0ms)
+pnpm test
 ```
+
+Run the database and server integration tests while the local MongoDB replica set is active:
+
+```bash
+pnpm test:integration
+```
+
+Check all workspace types:
 
 ```bash
 pnpm check-types
-$ pnpm -r check-types
-Scope: 6 of 7 workspace projects
-packages/ui check-types$ tsc --noEmit
-└─ Done in 1.4s
-apps/web check-types$ tsc --noEmit
-└─ Done in 1.2s
 ```
+
+Build the Next.js frontend and Hono server:
 
 ```bash
 pnpm build
-$ pnpm -r build
-Scope: 6 of 7 workspace projects
-apps/web build$ next build
-[14 lines collapsed]
-│ Route (app)
-│ ┌ ○ /
-│ ├ ○ /_not-found
-│ ├ ƒ /api/[[...route]]
-│ ├ ƒ /dashboard
-│ ├ ƒ /dashboard/periods
-│ ├ ƒ /dashboard/reports
-│ └ ○ /login
-│ ○  (Static)   prerendered as static content
-│ ƒ  (Dynamic)  server-rendered on demand
-└─ Done in 8s
 ```
