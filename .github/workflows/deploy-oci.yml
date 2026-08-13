@@ -95,7 +95,7 @@ jobs:
           sudo systemctl restart crossval-server.service || rollback
 
           for _ in $(seq 1 12); do
-            if curl --fail --silent http://127.0.0.1:8000/crossval/api/health >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null; then
               for candidate in "$root"/releases/*; do
                 [ -d "$candidate" ] || continue
                 if [ "$candidate" != "$release" ] && [ "$candidate" != "$previous" ]; then
