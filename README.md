@@ -36,28 +36,29 @@ The Docker Compose MongoDB configuration is only for local development.
    ```bash
    pnpm install
    ```
-2. Copy the example environment file:
+2. Copy the example environment files:
 
    ```bash
    cp apps/web/.env.example apps/web/.env
+   cp apps/server/.env.example apps/server/.env
    ```
 3. Generate an authentication secret:
 
    ```bash
    openssl rand -base64 32
    ```
-4. Replace `xxx` in `apps/web/.env` with the generated secret.
+4. Replace `xxx` in `apps/server/.env` with the generated secret.
 5. Start MongoDB:
 
    ```bash
    pnpm db:start
    ```
-6. Start the web application:
+6. Start the web and server applications:
 
    ```bash
-   pnpm dev:web
+   pnpm dev
    ```
-7. Open [http://localhost:3000](http://localhost:3000).
+7. Open [http://localhost:3000](http://localhost:3000). The API listens on [http://localhost:8000](http://localhost:8000).
 
 The local MongoDB database requires Docker. It runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses this connection:
 

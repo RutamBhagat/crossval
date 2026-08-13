@@ -11,7 +11,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   verify:
@@ -28,41 +27,18 @@ jobs:
       - run: pnpm --filter server test
       - run: pnpm --filter server build
 
-  build-and-deploy:
+  deploy:
     needs: verify
     runs-on: ubuntu-latest
     environment: production
     env:
       OCI_HOST: ${{ secrets.OCI_HOST }}
       OCI_USER: ${{ secrets.OCI_USER }}
-      OCI_PORT: ${{ secrets.OCI_SSH_PORT || '22' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set image name
-        id: image
-        shell: bash
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-server" >> "$GITHUB_OUTPUT"
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and publish image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/server/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.image.outputs.name }}:${{ github.sha }}
-            ${{ steps.image.outputs.name }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Package source
+        run: git archive --format=tar.gz --output=crossval-${{ github.sha }}.tar.gz HEAD
 
       - name: Configure SSH
         env:
@@ -75,59 +51,59 @@ jobs:
           printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Authenticate OCI VM to GHCR
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload source
         run: |
-          printf '%s' "$GHCR_TOKEN" | ssh -p "$OCI_PORT" -i ~/.ssh/id_oci \
-            "$OCI_USER@$OCI_HOST" \
-            "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
+          scp -i ~/.ssh/id_oci \
+            "crossval-${{ github.sha }}.tar.gz" \
+            "$OCI_USER@$OCI_HOST:/tmp/crossval-${{ github.sha }}.tar.gz"
 
-      - name: Deploy image
-        env:
-          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+      - name: Deploy release
         run: |
-          ssh -p "$OCI_PORT" -i ~/.ssh/id_oci "$OCI_USER@$OCI_HOST" \
-            'bash -s' -- "$IMAGE" <<'DEPLOY'
+          ssh -i ~/.ssh/id_oci "$OCI_USER@$OCI_HOST" \
+            'bash -s' -- "${{ github.sha }}" <<'DEPLOY'
           set -euo pipefail
 
-          image="$1"
-          container="crossval-server"
-          previous="${container}-previous"
-          env_file="/opt/crossval/server.env"
-
-          test -f "$env_file"
-          docker pull "$image"
-          docker rm -f "$previous" 2>/dev/null || true
-
-          if docker container inspect "$container" >/dev/null 2>&1; then
-            docker rename "$container" "$previous"
-            docker stop "$previous"
-          fi
+          release_id="$1"
+          root=/opt/crossval
+          release="$root/releases/$release_id"
+          archive="/tmp/crossval-$release_id.tar.gz"
+          previous=$(readlink -f "$root/current" || true)
 
           rollback() {
-            docker logs "$container" 2>&1 || true
-            docker rm -f "$container" 2>/dev/null || true
-            if docker container inspect "$previous" >/dev/null 2>&1; then
-              docker rename "$previous" "$container"
-              docker start "$container"
+            sudo journalctl -u crossval-server.service -n 100 --no-pager || true
+            if [ -n "$previous" ] && [ -d "$previous" ]; then
+              ln -sfn "$previous" "$root/current.rollback"
+              mv -Tf "$root/current.rollback" "$root/current"
+              sudo systemctl restart crossval-server.service
             fi
             exit 1
           }
 
-          docker run -d \
-            --name "$container" \
-            --restart unless-stopped \
-            --env-file "$env_file" \
-            -p 127.0.0.1:3001:3001 \
-            "$image" || rollback
+          sudo test -r "$root/server.env"
+          rm -rf "$release"
+          install -d "$release"
+          tar -xzf "$archive" -C "$release"
+          rm -f "$archive"
+
+          cd "$release"
+          sudo ./deploy/install-systemd-unit.sh
+          pnpm install --frozen-lockfile
+          pnpm --filter server build
+
+          ln -sfn "$release" "$root/current.next"
+          mv -Tf "$root/current.next" "$root/current"
+          sudo systemctl restart crossval-server.service || rollback
 
           for _ in $(seq 1 12); do
-            status=$(docker inspect --format '{{.State.Health.Status}}' "$container")
-            case "$status" in
-              healthy) docker rm -f "$previous" 2>/dev/null || true; exit 0 ;;
-              unhealthy) rollback ;;
-            esac
+            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null; then
+              for candidate in "$root"/releases/*; do
+                [ -d "$candidate" ] || continue
+                if [ "$candidate" != "$release" ] && [ "$candidate" != "$previous" ]; then
+                  rm -rf "$candidate"
+                fi
+              done
+              exit 0
+            fi
             sleep 5
           done
 

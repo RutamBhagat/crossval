@@ -9,7 +9,7 @@ export const env = createEnv({
     BETTER_AUTH_URL: z.url(),
     CORS_ORIGIN: z.url().default("http://localhost:3000"),
     HOST: z.string().default("0.0.0.0"),
-    PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+    PORT: z.coerce.number().int().min(1).max(65535).default(8000),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
