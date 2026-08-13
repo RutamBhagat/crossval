@@ -1,15 +1,3 @@
-type MonthlyPlan = {
-  categoryId: string;
-  month: string;
-  amountCents: number;
-};
-
-type MonthlyActualTotal = {
-  categoryId: string;
-  month: string;
-  actualCents: number;
-};
-
 type MonthlyVariance = {
   month: string;
   varianceCents: number;
@@ -23,19 +11,6 @@ type ReportRow = {
   varianceCents: number;
   variancePercent: number | null;
 };
-
-function buildMonthlyVariance(rows: ReportRow[]): MonthlyVariance[] {
-  const totals = new Map<string, number>();
-
-  for (const row of rows) {
-    totals.set(row.month, (totals.get(row.month) ?? 0) + row.varianceCents);
-  }
-
-  return Array.from(totals, ([month, varianceCents]) => ({
-    month,
-    varianceCents,
-  })).sort((left, right) => left.month.localeCompare(right.month));
-}
 
 function buildReportCsv(
   rows: ReportRow[],
@@ -64,49 +39,5 @@ function buildReportCsv(
   return `${lines.join("\r\n")}\r\n`;
 }
 
-function buildReportRows(
-  plans: MonthlyPlan[],
-  actualTotals: MonthlyActualTotal[],
-): ReportRow[] {
-  const periods = new Map<
-    string,
-    Pick<ReportRow, "categoryId" | "month" | "planCents" | "actualCents">
-  >();
-
-  for (const plan of plans) {
-    periods.set(`${plan.categoryId}:${plan.month}`, {
-      categoryId: plan.categoryId,
-      month: plan.month,
-      planCents: plan.amountCents,
-      actualCents: 0,
-    });
-  }
-
-  for (const actual of actualTotals) {
-    const key = `${actual.categoryId}:${actual.month}`;
-    const period = periods.get(key);
-
-    periods.set(key, {
-      categoryId: actual.categoryId,
-      month: actual.month,
-      planCents: period?.planCents ?? 0,
-      actualCents: actual.actualCents,
-    });
-  }
-
-  return Array.from(periods.values(), (period) => {
-    const varianceCents = period.actualCents - period.planCents;
-
-    return {
-      ...period,
-      varianceCents,
-      variancePercent:
-        period.planCents === 0
-          ? null
-          : (varianceCents / period.planCents) * 100,
-    };
-  });
-}
-
-export { buildMonthlyVariance, buildReportCsv, buildReportRows };
-export type { MonthlyActualTotal, MonthlyPlan, MonthlyVariance, ReportRow };
+export { buildReportCsv };
+export type { MonthlyVariance, ReportRow };

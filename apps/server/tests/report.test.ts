@@ -19,11 +19,7 @@ vi.mock("@crossval/db/models/actual.model", () => ({
   Actual: { aggregate: mocks.actualAggregate, find: mocks.actualFind },
 }));
 
-import {
-  buildMonthlyVariance,
-  buildReportCsv,
-  buildReportRows,
-} from "@crossval/domain/report";
+import { buildReportCsv } from "@crossval/domain/report";
 
 import { reportsRouter } from "../src/routers/reports";
 
@@ -170,83 +166,6 @@ describe("report aggregation", () => {
   });
 });
 
-describe("report variance", () => {
-  it.each([
-    {
-      name: "under plan",
-      planCents: 500_000,
-      actualCents: 480_000,
-      varianceCents: -20_000,
-      variancePercent: -4,
-    },
-    {
-      name: "over plan",
-      planCents: 2_000_000,
-      actualCents: 2_050_000,
-      varianceCents: 50_000,
-      variancePercent: 2.5,
-    },
-    {
-      name: "zero plan",
-      planCents: 0,
-      actualCents: 10_000,
-      varianceCents: 10_000,
-      variancePercent: null,
-    },
-  ])(
-    "calculates $name variance without an invalid percentage",
-    ({ planCents, actualCents, varianceCents, variancePercent }) => {
-      const [row] = buildReportRows(
-        [{ categoryId: "marketing", month: "2026-01", amountCents: planCents }],
-        [
-          {
-            categoryId: "marketing",
-            month: "2026-01",
-            actualCents,
-          },
-        ],
-      );
-
-      expect(row).toMatchObject({ varianceCents, variancePercent });
-    },
-  );
-
-  it("treats a missing actual total as zero", () => {
-    const [row] = buildReportRows(
-      [{ categoryId: "marketing", month: "2026-01", amountCents: 500_000 }],
-      [],
-    );
-
-    expect(row).toMatchObject({
-      actualCents: 0,
-      varianceCents: -500_000,
-      variancePercent: -100,
-    });
-  });
-
-  it("includes an actual total without a plan", () => {
-    const [row] = buildReportRows(
-      [],
-      [
-        {
-          categoryId: "tools",
-          month: "2026-02",
-          actualCents: 50_000,
-        },
-      ],
-    );
-
-    expect(row).toEqual({
-      categoryId: "tools",
-      month: "2026-02",
-      planCents: 0,
-      actualCents: 50_000,
-      varianceCents: 50_000,
-      variancePercent: null,
-    });
-  });
-});
-
 describe("report range validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -269,26 +188,6 @@ describe("report range validation", () => {
 });
 
 describe("report output", () => {
-  it("combines category variances into chronological monthly totals", () => {
-    const rows = buildReportRows(
-      [
-        { categoryId: "marketing", month: "2026-02", amountCents: 40_000 },
-        { categoryId: "payroll", month: "2026-01", amountCents: 100_000 },
-        { categoryId: "tools", month: "2026-01", amountCents: 20_000 },
-      ],
-      [
-        { categoryId: "marketing", month: "2026-02", actualCents: 35_000 },
-        { categoryId: "payroll", month: "2026-01", actualCents: 110_000 },
-        { categoryId: "tools", month: "2026-01", actualCents: 17_500 },
-      ],
-    );
-
-    expect(buildMonthlyVariance(rows)).toEqual([
-      { month: "2026-01", varianceCents: 7_500 },
-      { month: "2026-02", varianceCents: -5_000 },
-    ]);
-  });
-
   it("exports exact decimal amounts and escapes CSV category names", () => {
     const csv = buildReportCsv(
       [
