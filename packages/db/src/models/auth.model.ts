@@ -43,7 +43,6 @@ const accountSchema = new Schema(
     accessTokenExpiresAt: { type: Date },
     refreshTokenExpiresAt: { type: Date },
     scope: { type: String },
-    password: { type: String },
     createdAt: { type: Date, required: true, default: Date.now },
     updatedAt: { type: Date, required: true, default: Date.now },
   },

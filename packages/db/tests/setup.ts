@@ -7,3 +7,7 @@ process.env.BETTER_AUTH_SECRET =
   "integration-test-secret-at-least-32-characters";
 process.env.BETTER_AUTH_URL =
   process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+process.env.GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID ?? "test-google-client-id";
+process.env.GOOGLE_CLIENT_SECRET =
+  process.env.GOOGLE_CLIENT_SECRET ?? "test-google-client-secret";

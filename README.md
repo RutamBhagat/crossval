@@ -58,18 +58,29 @@ The Docker Compose MongoDB configuration is only for local development.
    ```bash
    openssl rand -base64 32
    ```
-4. Set `BETTER_AUTH_SECRET` in `apps/server/.env` to the generated secret.
-5. Start MongoDB:
+4. Create a Google OAuth 2.0 client for a web application in Google Cloud Console.
+5. Add this authorized JavaScript origin:
+
+   ```text
+   http://localhost:3000
+   ```
+6. Add this authorized redirect URI:
+
+   ```text
+   http://localhost:3000/api/auth/callback/google
+   ```
+7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `apps/server/.env`.
+8. Start MongoDB:
 
    ```bash
    pnpm db:start
    ```
-6. Start the web and server applications:
+9. Start the web and server applications:
 
    ```bash
    pnpm dev
    ```
-7. Open [http://localhost:3000](http://localhost:3000). The API listens on [http://localhost:8000](http://localhost:8000).
+10. Open [http://localhost:3000](http://localhost:3000). The API listens on [http://localhost:8000](http://localhost:8000).
 
 The local MongoDB database requires Docker. It runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses this connection:
 
@@ -132,6 +143,20 @@ The import checks the month, category, and amount in each row. The import accept
 
 ## Assumptions and tradeoffs
 
+### Authentication
+
+Crossval supports Google OAuth only. It does not support email and password authentication or magic links.
+
+This choice reduces the authentication code and sensitive credential data that Crossval must manage. Google verifies the email address. It also manages passwords, multi-factor authentication, account recovery, and abuse controls. Crossval does not need password storage or password reset flows. It also does not need verification email delivery through Amazon SES, Resend, or another provider. Google sign-in reduces friction for users who already have a Google account.
+
+Google OAuth is not inherently secure in every deployment. It reduces the application-controlled authentication surface by delegating credential security to Google. Crossval must still protect OAuth secrets, redirect URIs, sessions, cookies, and user authorization.
+
+The main tradeoff is provider dependence. Every user must have a Google account, and sign-in depends on Google availability and policy. Crossval cannot control Google account recovery. This choice can also exclude users or organizations that do not permit Google accounts.
+
+Supporting local credentials later would require email verification, password reset, rate limits, anti-enumeration controls, secure account linking, and transactional email delivery.
+
+### Product and data model
+
 - The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December. Custom fiscal-year start months are out of scope.
 - All amounts use USD. The database stores nonnegative amounts as whole cents to prevent floating-point rounding errors.
 - Marketing, Payroll, and Tools are a fixed seed list. Category CRUD is out of scope for this version.
@@ -145,7 +170,7 @@ Make these changes before production use:
 
 - Add category management, CSV previews, and import history.
 - Add an audited lock removal process with clear user permissions.
-- Add rate limits and stronger password controls.
+- Add rate limits and review OAuth, session, cookie, and token-revocation controls.
 - Add centralized request logs, error monitoring, and external health monitoring.
 - Configure and verify MongoDB Atlas backups. Test database recovery.
 - Add more integration and browser tests for authentication and report workflows.
