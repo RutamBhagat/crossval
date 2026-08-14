@@ -147,7 +147,7 @@ The import checks the month, category, and amount in each row. The import accept
 
 Crossval supports Google OAuth only. It does not support email and password authentication or magic links.
 
-This choice reduces the authentication code and sensitive credential data that Crossval must manage. Google verifies the email address. It also manages passwords, multi-factor authentication, account recovery, and abuse controls. Crossval does not need password storage or password reset flows. It also does not need verification email delivery through Amazon SES, Resend, or another provider. Google sign-in reduces friction for users who already have a Google account.
+This choice reduces the authentication code and sensitive credential data that Crossval must manage. For Google sign-in, CrossVal depends on Google's verified identity/email claims rather than independently verifying ownership via transactional email. It also manages passwords, multi-factor authentication, account recovery, and abuse controls. Crossval does not need password storage or password reset flows. It also does not need verification email delivery through Amazon SES, Resend, or another provider. Google sign-in reduces friction for users who already have a Google account.
 
 Google OAuth is not inherently secure in every deployment. It reduces the application-controlled authentication surface by delegating credential security to Google. Crossval must still protect OAuth secrets, redirect URIs, sessions, cookies, and user authorization.
 
