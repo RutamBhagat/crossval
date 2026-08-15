@@ -22,7 +22,7 @@ Install these tools before you start:
 
 ### Backend
 
-[92.5.160.137/crossval](https://92.5.160.137/crossval)
+[92.5.75.7/crossval](https://92.5.75.7/crossval)
 
 Production stack:
 
@@ -34,9 +34,58 @@ Production stack:
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API. The `API_UPSTREAM_URL` environment variable sets this upstream URL.
 
-The OCI instance runs the built `apps/server` application as a systemd service on port `8000`. MongoDB Atlas supports the transactions that enforce month locks.
+Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy terminates TLS and removes the `/crossval` path prefix. It then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The Hono API binds to that private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
 
-A push to `main` starts the OCI deployment workflow. GitHub Actions checks the server types, runs its tests, and builds it before deployment. The workflow uploads a source archive, installs a versioned release under `/opt/crossval/releases`, and switches the `current` symlink. It checks `/api/health` after restart and restores the prior release if the check fails.
+```mermaid
+flowchart TD
+    U[Browser] --> V[Vercel frontend]
+    V -->|HTTPS 443| C[e2-1: Caddy]
+    C -->|OCI private subnet<br/>TCP 8000| A[a1: Hono API]
+    A -->|TLS, outbound| M[MongoDB Atlas]
+```
+
+### Network security
+
+The deployment uses OCI security rules, UFW, private subnet routing, and Tailscale as separate controls.
+
+| VM     | Inbound traffic allowed by UFW        | Purpose                                             |
+| ------ | ------------------------------------- | --------------------------------------------------- |
+| `e2-1` | TCP `80` and `443` from the internet  | HTTP redirect, TLS termination, and reverse proxy   |
+| `e2-1` | UDP `41641`                           | Direct Tailscale connections                        |
+| `a1`   | TCP `8000` from `e2-1` at `10.0.0.21` | Caddy-to-API traffic through the OCI private subnet |
+| `a1`   | UDP `41641`                           | Direct Tailscale connections                        |
+| Both   | Traffic on `tailscale0`               | Authenticated administration and deployment traffic |
+
+UFW denies other inbound traffic by default. OCI security rules apply the same minimum-access model before traffic reaches each VM. SSH listens on the hosts, but the public firewall does not admit TCP `22`. Administrators connect through Tailscale instead.
+
+The UDP `41641` rules permit direct WireGuard connections when NAT traversal succeeds. Tailscale can use a DERP relay when a direct connection is not available.
+
+The `a1` VM still has a reserved public IP because releasing it could change the deployment address. The API does not use that address for normal request or deployment traffic. In a production deployment, I would remove the public IP from `a1`. This change would remove the unused public route and reduce the network surface.
+
+### Secure CI/CD path
+
+A push to `main` starts `.github/workflows/deploy-oci.yml`. The `verify` job checks server types, runs tests, and builds the server before deployment.
+
+The `deploy` job uses GitHub Actions workload identity federation to join the tailnet as an ephemeral `tag:ci` node. The workflow uses an OAuth client ID and audience, so it does not store a reusable Tailscale auth key. It waits until it can reach the Tailscale host `a1`.
+
+The runner then uses SSH and SCP through Tailscale. It does not require public SSH access or the Caddy request path.
+
+```mermaid
+flowchart TD
+    P[Push to main] --> Q[Verify types, tests, and build]
+    Q --> G[GitHub-hosted deploy runner]
+    G -->|Workload identity federation| T[Ephemeral tag:ci tailnet node]
+    T -->|Tailscale SSH and SCP| A[a1]
+    A --> R[Install versioned release]
+    R --> S[Switch current symlink and restart]
+    S --> H[Local health check]
+    H -->|Pass| K[Keep new release]
+    H -->|Fail| B[Restore prior release]
+```
+
+The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. It switches the `current` symlink and restarts `crossval-server.service`. It then checks `/api/health` on the VM. If the check fails, it restores the prior release and restarts the service.
+
+The public request path and private deployment path are independent. Caddy can continue to serve the active release while GitHub Actions uploads and builds the next release through Tailscale.
 
 The Docker Compose MongoDB configuration is only for local development.
 
@@ -47,39 +96,46 @@ The Docker Compose MongoDB configuration is only for local development.
    ```bash
    pnpm install
    ```
+
 2. Copy the example environment files:
 
    ```bash
    cp apps/web/.env.example apps/web/.env
    cp apps/server/.env.example apps/server/.env
    ```
+
 3. Generate an authentication secret:
 
    ```bash
    openssl rand -base64 32
    ```
+
 4. Create a Google OAuth 2.0 client for a web application in Google Cloud Console.
 5. Add this authorized JavaScript origin:
 
    ```text
    http://localhost:3000
    ```
+
 6. Add this authorized redirect URI:
 
    ```text
    http://localhost:3000/api/auth/callback/google
    ```
+
 7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `apps/server/.env`.
 8. Start MongoDB:
 
    ```bash
    pnpm db:start
    ```
+
 9. Start the web and server applications:
 
    ```bash
    pnpm dev
    ```
+
 10. Open [http://localhost:3000](http://localhost:3000). The API listens on [http://localhost:8000](http://localhost:8000).
 
 The local MongoDB database requires Docker. It runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses this connection:
