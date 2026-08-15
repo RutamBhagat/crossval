@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   verify:
@@ -32,34 +33,40 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      OCI_HOST: ${{ secrets.OCI_HOST }}
+      OCI_HOST: a1
       OCI_USER: ${{ secrets.OCI_USER }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+          ping: a1
 
       - name: Package source
         run: git archive --format=tar.gz --output=crossval-${{ github.sha }}.tar.gz HEAD
 
       - name: Configure SSH
-        env:
-          OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
-          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$OCI_SSH_KEY" > ~/.ssh/id_oci
-          chmod 600 ~/.ssh/id_oci
-          printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<'EOF'
+          Host a1
+            User ubuntu
+            StrictHostKeyChecking accept-new
+          EOF
 
       - name: Upload source
         run: |
-          scp -i ~/.ssh/id_oci \
+          scp \
             "crossval-${{ github.sha }}.tar.gz" \
             "$OCI_USER@$OCI_HOST:/tmp/crossval-${{ github.sha }}.tar.gz"
 
       - name: Deploy release
         run: |
-          ssh -i ~/.ssh/id_oci "$OCI_USER@$OCI_HOST" \
+          ssh "$OCI_USER@$OCI_HOST" \
             'bash -s' -- "${{ github.sha }}" <<'DEPLOY'
           set -euo pipefail
 
