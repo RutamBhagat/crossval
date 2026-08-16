@@ -108,7 +108,7 @@ flowchart TD
 
 The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. The API uses `DATABASE_URL` for application data and `REDIS_URL` for shared rate-limit counters.
 
-The workflow sends a Redis `PING` before it activates a release. A failed Redis check stops the deployment. The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the health check fails, it restores the prior release and restarts the service.
+The workflow runs a temporary Redis rate-limit operation before it activates a release. This check verifies the connection, write access, Lua execution, and cleanup. A failed Redis check stops the deployment. The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the health check fails, it restores the prior release and restarts the service.
 
 The public request path and private deployment path are independent. Caddy can continue to serve the active release while GitHub Actions uploads and builds the next release through Tailscale.
 
@@ -168,6 +168,12 @@ The local MongoDB database and Redis service require Docker. MongoDB runs as a s
 ```text
 mongodb://localhost:27017/crossval?replicaSet=rs0
 redis://localhost:6379
+```
+
+Run the Redis CLI inside the Docker container:
+
+```bash
+pnpm redis:cli
 ```
 
 For production, set `DATABASE_URL` to the MongoDB Atlas connection string and `REDIS_URL` to the Upstash `rediss://` connection string.
