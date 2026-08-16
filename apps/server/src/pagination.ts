@@ -3,11 +3,11 @@ import "@/validation-config";
 import { type } from "arktype";
 
 const Offset = type("string.integer.parse")
-  .to("number.integer >= 0")
+  .to("number >= 0")
   .configure({ message: "Offset must be zero or greater" });
 
 const Limit = type("string.integer.parse")
-  .to("1 <= number.integer <= 50")
+  .to("1 <= number <= 50")
   .configure({ message: "Limit must be between 1 and 50" });
 
 const paginationQueryFields = {

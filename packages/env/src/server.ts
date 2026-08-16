@@ -12,7 +12,7 @@ const Host = type("string | undefined").pipe(
 
 const Port = type("string.integer.parse | undefined")
   .pipe((value) => value ?? 8000)
-  .to("1 <= number.integer <= 65535");
+  .to("1 <= number <= 65535");
 
 const NodeEnv = type(
   "'development' | 'production' | 'test' | undefined",

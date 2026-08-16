@@ -1,3 +1,5 @@
+import "@/validation-config";
+
 import { serve } from "@hono/node-server";
 import { connection } from "@crossval/db";
 import { env } from "@crossval/env/server";
