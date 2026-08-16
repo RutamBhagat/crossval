@@ -35,11 +35,11 @@ Production stack:
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API. The `API_UPSTREAM_URL` environment variable sets this upstream URL.
 
-Next.js Proxy reads the client IP that Vercel supplies. It overwrites the internal client-IP and origin-token request headers before the rewrite.
+In production, Next.js Proxy validates the single client IP that Vercel supplies. It fails closed if the value is absent or is not an IPv4 or IPv6 address. It overwrites the internal client-IP and origin-token request headers before the rewrite. Local development bypasses this production trust boundary.
 
-Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy rejects API requests that do not have the server-only origin token. For accepted requests, it overwrites `X-Forwarded-For` with the canonical client IP and removes the internal headers. Caddy then terminates TLS and removes the `/crossval` path prefix.
+Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy terminates TLS and verifies the server-only origin token. For accepted requests, it overwrites `X-Forwarded-For` with the canonical client IP. It then removes the internal headers and the `/crossval` path prefix.
 
-It then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The 2-OCPU, 12 GB RAM Arm instance runs the Hono API. The API binds to its private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
+Caddy then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The 2-OCPU, 12 GB RAM Arm instance runs the Hono API. The API binds to its private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
 
 ```mermaid
 flowchart TD
@@ -64,7 +64,7 @@ Redis stores the IP and user counters under separate key prefixes with key expir
 
 The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header. Better Auth uses the same trusted proxy address when it resolves the forwarded IP chain. UFW keeps the API origin private and permits application traffic only from Caddy.
 
-`API_ORIGIN_TOKEN` must contain the same secret in the Vercel project and the Caddy service environment. Do not expose it through a `NEXT_PUBLIC_` variable. Replace the old Caddy `/crossval/*` handler with `deploy/Caddyfile.crossval`. Direct requests to the public OCI API origin then receive HTTP status `403`.
+`API_ORIGIN_TOKEN` must be a 64-character lowercase hexadecimal secret. It must have the same value in the Vercel project and the Caddy service environment. This token is a security credential for client-IP authenticity. Rotate it if it leaks, never log it intentionally, and do not expose it through a `NEXT_PUBLIC_` variable. Replace the old Caddy `/crossval/*` handler with `deploy/Caddyfile.crossval`. Direct requests to the public OCI API origin then receive HTTP status `403`.
 
 ### Graceful shutdown
 

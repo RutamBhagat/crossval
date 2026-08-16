@@ -1,7 +1,9 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { type } from "arktype";
 
-const ApiOriginToken = type("string").narrow((value) => value.length >= 32);
+const ApiOriginToken = type("string").narrow((value) =>
+  /^[0-9a-f]{64}$/.test(value),
+);
 
 const ApiUpstreamUrl = type("string | undefined")
   .pipe((value) => value ?? "http://localhost:8000/crossval")

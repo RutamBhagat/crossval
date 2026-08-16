@@ -8,7 +8,7 @@
 @crossval path /crossval/*
 @authorizedCrossval {
 	path /crossval/*
-	header X-Crossval-Origin-Token {$API_ORIGIN_TOKEN}
+	header X-Crossval-Origin-Token "{$API_ORIGIN_TOKEN}"
 }
 
 route {
