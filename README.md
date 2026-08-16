@@ -35,12 +35,16 @@ Production stack:
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API. The `API_UPSTREAM_URL` environment variable sets this upstream URL.
 
-Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy terminates TLS and removes the `/crossval` path prefix. It then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The 2-OCPU, 12 GB RAM Arm instance runs the Hono API. The API binds to its private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
+Next.js Proxy reads the client IP that Vercel supplies. It overwrites the internal client-IP and origin-token request headers before the rewrite.
+
+Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy rejects API requests that do not have the server-only origin token. For accepted requests, it overwrites `X-Forwarded-For` with the canonical client IP and removes the internal headers. Caddy then terminates TLS and removes the `/crossval` path prefix.
+
+It then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The 2-OCPU, 12 GB RAM Arm instance runs the Hono API. The API binds to its private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
 
 ```mermaid
 flowchart TD
     U[Browser] --> V[Vercel frontend]
-    V -->|HTTPS 443| C[e2-1: Caddy]
+    V -->|HTTPS 443<br/>canonical IP + origin token| C[e2-1: Caddy]
     C -->|OCI private subnet<br/>TCP 8000| A[a1: Hono API]
     A -->|TLS, outbound| M[MongoDB Atlas]
     A -->|TLS, outbound| R[Upstash Redis]
@@ -54,11 +58,13 @@ Two independent Upstash Redis-backed rate limiters protect the API. The IP limit
 
 Each limiter blocks excess requests for 60 seconds and returns HTTP status `429`. A rejected response identifies the limit as `ip` or `user` in its JSON `policy` field. It includes `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` headers. Successful responses do not report one policy as authoritative.
 
-Better Auth independently rate-limits authentication endpoints by client IP. It uses a global policy and stricter policies for sensitive endpoints. The IP and user thresholds are initial operating values and require validation with load tests.
+Better Auth independently rate-limits authentication endpoints by client IP. It uses a global policy and stricter policies for sensitive endpoints. Its counters use process memory by default. The IP and user thresholds are initial operating values and require validation with load tests.
 
 Redis stores the IP and user counters under separate key prefixes with key expiry. Redis commands have a one-second timeout. Redis connections have a three-second timeout. Each Redis limiter has an independent in-memory insurance limiter that maintains rate-limit availability during Redis failures. Insurance counters are local to one server process. The limiter does not copy them to Redis after recovery.
 
 The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header. Better Auth uses the same trusted proxy address when it resolves the forwarded IP chain. UFW keeps the API origin private and permits application traffic only from Caddy.
+
+`API_ORIGIN_TOKEN` must contain the same secret in the Vercel project and the Caddy service environment. Do not expose it through a `NEXT_PUBLIC_` variable. Replace the old Caddy `/crossval/*` handler with `deploy/Caddyfile.crossval`. Direct requests to the public OCI API origin then receive HTTP status `403`.
 
 ### Graceful shutdown
 

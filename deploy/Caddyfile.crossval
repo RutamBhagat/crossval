@@ -1,0 +1,28 @@
+# Replace the unauthenticated /crossval/* handle_path in the public API site
+# block with:
+#
+# import /etc/caddy/Caddyfile.crossval
+#
+# The caddy service must receive API_ORIGIN_TOKEN through an EnvironmentFile.
+
+@crossval path /crossval/*
+@authorizedCrossval {
+	path /crossval/*
+	header X-Crossval-Origin-Token {$API_ORIGIN_TOKEN}
+}
+
+route {
+	handle @authorizedCrossval {
+		uri strip_prefix /crossval
+		reverse_proxy 10.0.0.201:8000 {
+			header_up X-Forwarded-For {http.request.header.X-Crossval-Client-IP}
+			header_up -Forwarded
+			header_up -X-Real-IP
+			header_up -X-Vercel-Forwarded-For
+			header_up -X-Crossval-Client-IP
+			header_up -X-Crossval-Origin-Token
+		}
+	}
+
+	respond @crossval 403
+}
