@@ -1,4 +1,3 @@
-import "@/validation-config";
 
 import { auth } from "@crossval/auth";
 import { env } from "@crossval/env/server";
