@@ -9,6 +9,7 @@ export default defineConfig({
     },
   },
   test: {
+    setupFiles: [fileURLToPath(new URL("./tests/setup.ts", import.meta.url))],
     exclude: [
       ...configDefaults.exclude,
       "tests/**/*.integration.test.ts",

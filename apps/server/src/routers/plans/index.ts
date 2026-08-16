@@ -1,16 +1,12 @@
 import { sValidator } from "@hono/standard-validator";
 import { Plan } from "@crossval/db/models/plan.model";
 import { runIfPeriodsOpen } from "@crossval/db/period-state";
-import { Hono } from "hono";
-
 import { amountToCents } from "@/money";
-import { requireAuth, type AuthVariables } from "@/middleware/auth";
+import { createAuthenticatedRouter } from "@/middleware/authenticated-router";
 
 import { planInputSchema, plansQuerySchema } from "./schema";
 
-const plansRouter = new Hono<{ Variables: AuthVariables }>();
-
-plansRouter.use("*", requireAuth);
+const plansRouter = createAuthenticatedRouter();
 
 plansRouter.get(
   "/",

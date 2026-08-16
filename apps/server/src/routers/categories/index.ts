@@ -1,11 +1,7 @@
 import { categories } from "@crossval/domain/categories";
-import { Hono } from "hono";
+import { createAuthenticatedRouter } from "@/middleware/authenticated-router";
 
-import { requireAuth, type AuthVariables } from "@/middleware/auth";
-
-const categoriesRouter = new Hono<{ Variables: AuthVariables }>();
-
-categoriesRouter.use("*", requireAuth);
+const categoriesRouter = createAuthenticatedRouter();
 
 categoriesRouter.get("/", (c) => c.json({ categories }));
 

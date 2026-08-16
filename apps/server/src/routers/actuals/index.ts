@@ -2,21 +2,18 @@ import { Actual } from "@crossval/db/models/actual.model";
 import { runIfPeriodsOpen } from "@crossval/db/period-state";
 import { sValidator } from "@hono/standard-validator";
 import { parse } from "csv-parse/sync";
-import { Hono } from "hono";
 
 import { categories } from "@crossval/domain/categories";
 
 import { amountToCents } from "@/money";
-import { requireAuth, type AuthVariables } from "@/middleware/auth";
+import { createAuthenticatedRouter } from "@/middleware/authenticated-router";
 
 import { actualInputSchema, actualsQuerySchema } from "./schema";
 
-const actualsRouter = new Hono<{ Variables: AuthVariables }>();
+const actualsRouter = createAuthenticatedRouter();
 const categoryIdsByName = new Map(
   categories.map((category) => [category.name.toLowerCase(), category.id]),
 );
-
-actualsRouter.use("*", requireAuth);
 
 actualsRouter.get(
   "/",

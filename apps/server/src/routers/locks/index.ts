@@ -1,15 +1,11 @@
 import { PeriodState } from "@crossval/db/models/period-state.model";
 import { closePeriod } from "@crossval/db/period-state";
 import { sValidator } from "@hono/standard-validator";
-import { Hono } from "hono";
-
-import { requireAuth, type AuthVariables } from "@/middleware/auth";
+import { createAuthenticatedRouter } from "@/middleware/authenticated-router";
 
 import { lockInputSchema } from "./schema";
 
-const locksRouter = new Hono<{ Variables: AuthVariables }>();
-
-locksRouter.use("*", requireAuth);
+const locksRouter = createAuthenticatedRouter();
 
 locksRouter.get("/", async (c) => {
   const locks = await PeriodState.find({

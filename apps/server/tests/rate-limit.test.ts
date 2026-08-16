@@ -13,6 +13,7 @@ function createTestApp(points = 2) {
     "*",
     createRateLimit({
       limiter: new RateLimiterMemory({ points, duration: 60 }),
+      policy: "ip",
       key: () => "client-1",
     }),
   );
@@ -55,14 +56,14 @@ describe("rate limit client address", () => {
 });
 
 describe("rate limit middleware", () => {
-  it("reports the limit and remaining points", async () => {
+  it("does not report one policy as authoritative on success", async () => {
     const app = createTestApp();
 
     const response = await app.request("/");
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("RateLimit-Limit")).toBe("2");
-    expect(response.headers.get("RateLimit-Remaining")).toBe("1");
+    expect(response.headers.has("RateLimit-Limit")).toBe(false);
+    expect(response.headers.has("RateLimit-Remaining")).toBe(false);
   });
 
   it("returns 429 after the client exhausts its points", async () => {
@@ -78,6 +79,7 @@ describe("rate limit middleware", () => {
     expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
     await expect(response.json()).resolves.toEqual({
       error: "rate_limit_exceeded",
+      policy: "ip",
       retryAfter: expect.any(Number),
     });
   });
@@ -88,6 +90,7 @@ describe("rate limit middleware", () => {
       "*",
       createRateLimit({
         limiter: new RateLimiterMemory({ points: 1, duration: 60 }),
+        policy: "ip",
         key: () => "client-1",
         skip: (context) => context.req.path === "/health",
       }),
@@ -111,6 +114,7 @@ describe("rate limit middleware", () => {
       "*",
       createRateLimit({
         limiter: new RateLimiterMemory({ points: 1, duration: 60 }),
+        policy: "ip",
         key: () => undefined,
       }),
     );

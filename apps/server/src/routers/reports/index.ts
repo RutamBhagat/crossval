@@ -6,9 +6,7 @@ import {
   type ReportRow,
 } from "@crossval/domain/report";
 import { sValidator } from "@hono/standard-validator";
-import { Hono } from "hono";
-
-import { requireAuth, type AuthVariables } from "@/middleware/auth";
+import { createAuthenticatedRouter } from "@/middleware/authenticated-router";
 
 import {
   reportActualsQuerySchema,
@@ -22,7 +20,7 @@ type ReportAggregation = {
   metadata: { total: number }[];
 };
 
-const reportsRouter = new Hono<{ Variables: AuthVariables }>();
+const reportsRouter = createAuthenticatedRouter();
 
 type ReportSort = "month" | "category" | "target";
 type ReportSortDirection = "ascending" | "descending";
@@ -182,8 +180,6 @@ async function loadReportPage(
 
   return result ?? { rows: [], monthlyVariance: [], metadata: [] };
 }
-
-reportsRouter.use("*", requireAuth);
 
 reportsRouter.get(
   "/actuals",

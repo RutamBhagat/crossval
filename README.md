@@ -50,11 +50,15 @@ flowchart TD
 
 The API uses ArkType for request and environment validation. This keeps validation CPU and memory use low on the constrained Arm instance.
 
-An Upstash Redis-backed rate limiter applies to all API routes except `/api/health`. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
+Two independent Upstash Redis-backed rate limiters protect the API. The IP limiter applies to all API routes except `/api/health`. It sets a coarse ceiling of 3,000 requests per remote network address in each 60-second period. After authentication, a separate user limiter allows 300 requests per user ID in each 60-second period. A request to an authenticated route must satisfy both limits.
 
-Redis stores shared counters with key expiry. Redis commands have a one-second timeout. Redis connections have a three-second timeout. An in-memory insurance limiter maintains rate-limit availability during Redis failures. Insurance counters are local to one server process. The limiter does not copy them to Redis after recovery.
+Each limiter blocks excess requests for 60 seconds and returns HTTP status `429`. A rejected response identifies the limit as `ip` or `user` in its JSON `policy` field. It includes `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` headers. Successful responses do not report one policy as authoritative.
 
-The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header.
+Better Auth independently rate-limits authentication endpoints by client IP. It uses a global policy and stricter policies for sensitive endpoints. The IP and user thresholds are initial operating values and require validation with load tests.
+
+Redis stores the IP and user counters under separate key prefixes with key expiry. Redis commands have a one-second timeout. Redis connections have a three-second timeout. Each Redis limiter has an independent in-memory insurance limiter that maintains rate-limit availability during Redis failures. Insurance counters are local to one server process. The limiter does not copy them to Redis after recovery.
+
+The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header. Better Auth uses the same trusted proxy address when it resolves the forwarded IP chain. UFW keeps the API origin private and permits application traffic only from Caddy.
 
 ### Graceful shutdown
 

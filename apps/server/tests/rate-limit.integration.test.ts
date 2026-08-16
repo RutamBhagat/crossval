@@ -4,7 +4,12 @@ import { RateLimiterRedis } from "rate-limiter-flexible";
 import { afterEach, describe, expect, it } from "vitest";
 
 import app from "../src/index";
-import { redisRateLimiter } from "../src/middleware/redis-rate-limit";
+import {
+  IP_RATE_LIMIT_POINTS,
+  USER_RATE_LIMIT_POINTS,
+  redisRateLimiter,
+  redisUserRateLimiter,
+} from "../src/middleware/redis-rate-limit";
 import { redisClient } from "../src/redis";
 
 const keys = new Set<string>();
@@ -17,7 +22,12 @@ function testKey() {
 
 describe("Redis rate limiter integration", () => {
   afterEach(async () => {
-    await Promise.all([...keys].map((key) => redisRateLimiter.delete(key)));
+    await Promise.all(
+      [...keys].flatMap((key) => [
+        redisRateLimiter.delete(key),
+        redisUserRateLimiter.delete(key),
+      ]),
+    );
     keys.clear();
   });
 
@@ -34,7 +44,7 @@ describe("Redis rate limiter integration", () => {
     const secondLimiter = new RateLimiterRedis({
       storeClient: redisClient,
       keyPrefix: "crossval:rl:api",
-      points: 120,
+      points: IP_RATE_LIMIT_POINTS,
       duration: 60,
       blockDuration: 60,
     });
@@ -44,7 +54,22 @@ describe("Redis rate limiter integration", () => {
 
     expect(first.consumedPoints).toBe(1);
     expect(second.consumedPoints).toBe(2);
-    expect(second.remainingPoints).toBe(118);
+    expect(second.remainingPoints).toBe(IP_RATE_LIMIT_POINTS - 2);
+  });
+
+  it("keeps IP and authenticated-user counters independent", async () => {
+    const key = testKey();
+
+    const ipResult = await redisRateLimiter.consume(key);
+    const userResult = await redisUserRateLimiter.consume(key);
+
+    expect(ipResult.consumedPoints).toBe(1);
+    expect(ipResult.remainingPoints).toBe(IP_RATE_LIMIT_POINTS - 1);
+    expect(userResult.consumedPoints).toBe(1);
+    expect(userResult.remainingPoints).toBe(USER_RATE_LIMIT_POINTS - 1);
+    expect(redisRateLimiter.getKey(key)).not.toBe(
+      redisUserRateLimiter.getKey(key),
+    );
   });
 
   it("resets an expired counter", async () => {
@@ -58,7 +83,7 @@ describe("Redis rate limiter integration", () => {
     const result = await redisRateLimiter.consume(key);
 
     expect(result.consumedPoints).toBe(1);
-    expect(result.remainingPoints).toBe(119);
+    expect(result.remainingPoints).toBe(IP_RATE_LIMIT_POINTS - 1);
   });
 
   it("sets an expiry on counters", async () => {

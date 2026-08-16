@@ -16,6 +16,15 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
+    rateLimit: {
+      window: 60,
+      max: 100,
+    },
+    advanced: {
+      ipAddress: {
+        trustedProxies: [env.TRUSTED_PROXY_IP],
+      },
+    },
     trustedOrigins: [env.CORS_ORIGIN],
   });
 }

@@ -8,8 +8,11 @@ import {
   type RateLimiterAbstract,
 } from "rate-limiter-flexible";
 
+type RateLimitPolicy = "ip" | "user";
+
 type RateLimitOptions = {
   limiter: RateLimiterAbstract;
+  policy: RateLimitPolicy;
   key?: (context: Context) => string | undefined;
   skip?: (context: Context) => boolean;
 };
@@ -78,10 +81,7 @@ function createRateLimit(options: RateLimitOptions) {
     }
 
     try {
-      const result = await limiter.consume(key);
-
-      context.header("RateLimit-Limit", String(limiter.points));
-      context.header("RateLimit-Remaining", String(result.remainingPoints));
+      await limiter.consume(key);
       await next();
     } catch (error) {
       if (!(error instanceof RateLimiterRes)) {
@@ -97,6 +97,7 @@ function createRateLimit(options: RateLimitOptions) {
       return context.json(
         {
           error: "rate_limit_exceeded",
+          policy: options.policy,
           retryAfter,
         },
         429,
