@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { client, connection } from "@crossval/db";
+import { client } from "@crossval/db";
 import { RateLimiterMongo } from "rate-limiter-flexible";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { beforeAll, afterEach, describe, expect, it } from "vitest";
 
 import { mongoRateLimiter } from "../src/middleware/mongo-rate-limit";
 
@@ -15,14 +15,15 @@ function testKey() {
 }
 
 describe("MongoDB rate limiter integration", () => {
+  beforeAll(async () => {
+    await mongoRateLimiter.createIndexes();
+  });
+
   afterEach(async () => {
     await Promise.all([...keys].map((key) => mongoRateLimiter.delete(key)));
     keys.clear();
   });
 
-  afterAll(async () => {
-    await connection.close();
-  });
 
   it("shares counters between limiter instances", async () => {
     const key = testKey();
@@ -42,6 +43,21 @@ describe("MongoDB rate limiter integration", () => {
     expect(first.consumedPoints).toBe(1);
     expect(second.consumedPoints).toBe(2);
     expect(second.remainingPoints).toBe(118);
+  });
+
+  it("resets an expired counter before TTL cleanup", async () => {
+    const key = testKey();
+
+    await mongoRateLimiter.consume(key);
+    await client.collection("rate_limits").updateOne(
+      { key: mongoRateLimiter.getKey(key) },
+      { $set: { expire: new Date(0) } },
+    );
+
+    const result = await mongoRateLimiter.consume(key);
+
+    expect(result.consumedPoints).toBe(1);
+    expect(result.remainingPoints).toBe(119);
   });
 
   it("creates unique key and TTL indexes", async () => {

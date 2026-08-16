@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import { RateLimiterMemory } from "rate-limiter-flexible";
 import { describe, expect, it } from "vitest";
 
-import { createRateLimit } from "../src/middleware/rate-limit";
+import {
+  createRateLimit,
+  getClientAddress,
+} from "../src/middleware/rate-limit";
 
 function createTestApp(points = 2) {
   const app = new Hono();
@@ -16,6 +19,30 @@ function createTestApp(points = 2) {
   app.get("/", (context) => context.json({ ok: true }));
   return app;
 }
+
+describe("rate limit client address", () => {
+  it("uses the forwarded client address from the trusted proxy", () => {
+    expect(
+      getClientAddress(
+        "10.0.0.21",
+        "203.0.113.8, 198.51.100.4",
+        "10.0.0.21",
+      ),
+    ).toBe("203.0.113.8");
+  });
+
+  it("ignores a forwarded address from an untrusted peer", () => {
+    expect(
+      getClientAddress("198.51.100.4", "203.0.113.8", "10.0.0.21"),
+    ).toBe("198.51.100.4");
+  });
+
+  it("uses the trusted proxy address when its forwarded address is invalid", () => {
+    expect(getClientAddress("10.0.0.21", "invalid", "10.0.0.21")).toBe(
+      "10.0.0.21",
+    );
+  });
+});
 
 describe("rate limit middleware", () => {
   it("reports the limit and remaining points", async () => {

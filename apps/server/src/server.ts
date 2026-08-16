@@ -1,9 +1,10 @@
-
-import { serve } from "@hono/node-server";
 import { connection } from "@crossval/db";
 import { env } from "@crossval/env/server";
+import { serve } from "@hono/node-server";
 
 import app from "./index.js";
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const server = serve(
   {
@@ -16,17 +17,68 @@ const server = serve(
   },
 );
 
-async function shutdown(signal: NodeJS.Signals) {
-  console.log(`Received ${signal}; shutting down`);
+let shutdownStarted = false;
 
-  server.close(async (error) => {
-    await connection.close();
+function forceShutdown(reason: string) {
+  console.error(reason);
+  if ("closeAllConnections" in server) {
+    server.closeAllConnections();
+  }
+  process.exit(1);
+}
 
-    if (error) {
-      console.error(error);
-      process.exitCode = 1;
+function stopServer() {
+  return new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+    if ("closeIdleConnections" in server) {
+      server.closeIdleConnections();
     }
   });
+}
+
+async function shutdown(signal: NodeJS.Signals) {
+  if (shutdownStarted) {
+    forceShutdown(`Received ${signal} during shutdown; forcing exit`);
+  }
+
+  shutdownStarted = true;
+  console.log(`Received ${signal}; shutting down`);
+
+  const timeout = setTimeout(
+    () => forceShutdown("Graceful shutdown timed out; forcing exit"),
+    SHUTDOWN_TIMEOUT_MS,
+  );
+  timeout.unref();
+
+  let failed = false;
+
+  try {
+    await stopServer();
+  } catch (error) {
+    failed = true;
+    console.error("Failed to close HTTP server", error);
+  }
+
+  try {
+    await connection.close();
+  } catch (error) {
+    failed = true;
+    console.error("Failed to close MongoDB connection", error);
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (failed) {
+    process.exitCode = 1;
+  } else {
+    console.log("Graceful shutdown complete");
+  }
 }
 
 process.once("SIGINT", () => void shutdown("SIGINT"));

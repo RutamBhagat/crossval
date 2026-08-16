@@ -1,10 +1,11 @@
 import { client } from "@crossval/db";
+import { env } from "@crossval/env/server";
 import {
   RateLimiterMemory,
   RateLimiterMongo,
 } from "rate-limiter-flexible";
 
-import { createRateLimit } from "./rate-limit";
+import { createClientKey, createRateLimit } from "./rate-limit";
 
 const POINTS = 120;
 const DURATION_SECONDS = 60;
@@ -29,8 +30,9 @@ const mongoRateLimiter = new RateLimiterMongo({
   disableIndexesCreation: true,
 });
 
-await mongoRateLimiter.createIndexes();
-
-const rateLimit = createRateLimit({ limiter: mongoRateLimiter });
+const rateLimit = createRateLimit({
+  limiter: mongoRateLimiter,
+  key: createClientKey(env.TRUSTED_PROXY_IP),
+});
 
 export { mongoRateLimiter, rateLimit };

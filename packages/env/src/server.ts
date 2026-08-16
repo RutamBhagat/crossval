@@ -18,6 +18,10 @@ const NodeEnv = type(
   "'development' | 'production' | 'test' | undefined",
 ).pipe((value) => value ?? "development");
 
+const TrustedProxyIp = type("string | undefined").pipe(
+  (value) => value ?? "10.0.0.21",
+);
+
 export const env = createEnv({
   server: {
     DATABASE_URL: type("string > 0"),
@@ -29,6 +33,7 @@ export const env = createEnv({
     HOST: Host,
     PORT: Port,
     NODE_ENV: NodeEnv,
+    TRUSTED_PROXY_IP: TrustedProxyIp,
   },
   runtimeEnv: process.env,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

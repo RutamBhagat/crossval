@@ -16,7 +16,7 @@ async function closePeriod(userId: string, month: string) {
   return PeriodState.findOneAndUpdate(
     { userId, month },
     { $set: { locked: true }, $inc: { revision: 1 } },
-    { new: true, runValidators: true, upsert: true },
+    { returnDocument: "after", runValidators: true, upsert: true },
   ).lean();
 }
 
@@ -32,7 +32,12 @@ async function runIfPeriodsOpen<T>(
         const state = await PeriodState.findOneAndUpdate(
           { userId, month },
           { $inc: { revision: 1 } },
-          { new: true, runValidators: true, session, upsert: true },
+          {
+                      returnDocument: "after",
+                      runValidators: true,
+                      session,
+                      upsert: true,
+                    },
         ).lean();
 
         if (state?.locked !== false) {

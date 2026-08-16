@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import {
-  afterAll,
   afterEach,
   beforeAll,
+
   describe,
   expect,
   it,
@@ -18,7 +18,6 @@ vi.mock("@crossval/auth", () => ({
   auth: { api: { getSession: mocks.getSession } },
 }));
 
-import { connection } from "@crossval/db";
 import { Actual } from "@crossval/db/models/actual.model";
 import { Plan } from "@crossval/db/models/plan.model";
 
@@ -47,9 +46,6 @@ describe("report MongoDB aggregation integration", () => {
     vi.clearAllMocks();
   });
 
-  afterAll(async () => {
-    await connection.close();
-  });
 
   it("calculates report rows in MongoDB without leaking another user's data", async () => {
     const userId = testUserId("owner");

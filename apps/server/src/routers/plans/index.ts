@@ -80,7 +80,12 @@ plansRouter.put(
           month: input.month,
         },
         { $set: { amountCents } },
-        { new: true, runValidators: true, session, upsert: true },
+        {
+                  returnDocument: "after",
+                  runValidators: true,
+                  session,
+                  upsert: true,
+                },
       ).lean(),
     );
 

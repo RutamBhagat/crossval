@@ -46,13 +46,17 @@ flowchart TD
 
 ### API runtime controls
 
-The API uses ArkType for request and environment validation. ArkType replaced Zod to reduce validation CPU and memory use on the constrained Arm instance.
+The API uses ArkType for request and environment validation. This keeps validation CPU and memory use low on the constrained Arm instance.
 
 A MongoDB-backed rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
 
-MongoDB stores shared counters in the `rate_limits` collection and removes expired counters through a TTL index. An in-memory insurance limiter maintains service if MongoDB returns an error. Insurance counters are local to one server process and are not copied to MongoDB after recovery.
+MongoDB stores shared counters in the `rate_limits` collection and removes expired counters through a TTL index. An in-memory insurance limiter maintains rate-limit availability if MongoDB operations fail after application startup. Insurance counters are local to one server process and are not copied to MongoDB after recovery.
 
-The limiter uses the direct socket address. Therefore, public requests currently share the Caddy proxy address and one quota.
+The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header.
+
+### Graceful shutdown
+
+`SIGINT` or `SIGTERM` starts a graceful shutdown. The API stops new connections, closes idle connections, and waits for active requests. It then closes the MongoDB connection. A second signal or a 10-second timeout closes all remaining connections and forces the process to exit.
 
 ### Network security
 
@@ -86,14 +90,17 @@ flowchart TD
     Q --> G[GitHub-hosted deploy runner]
     G -->|Workload identity federation| T[Ephemeral tag:ci tailnet node]
     T -->|Tailscale SSH and SCP| A[a1]
-    A --> R[Install versioned release]
-    R --> S[Switch current symlink and restart]
+    A --> R[Install and build versioned release]
+    R --> I[Create rate-limit indexes]
+    I --> S[Switch current symlink and restart]
     S --> H[Local health check]
     H -->|Pass| K[Keep new release]
     H -->|Fail| B[Restore prior release]
 ```
 
-The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. It switches the `current` symlink and restarts `crossval-server.service`. It then checks `/api/health` on the VM. If the check fails, it restores the prior release and restarts the service.
+The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. A deployment migration creates the rate-limit indexes before the release becomes active. The API process does not create indexes. The deployment step uses a database credential with index-management permission.
+
+The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the check fails, it restores the prior release and restarts the service.
 
 The public request path and private deployment path are independent. Caddy can continue to serve the active release while GitHub Actions uploads and builds the next release through Tailscale.
 
@@ -246,7 +253,7 @@ Make these changes before production use:
 
 - Add category management, CSV previews, and import history.
 - Add an audited lock removal process with clear user permissions.
-- Make rate limits proxy-aware and route-specific.
+- Add route-specific rate limits for authentication and general API traffic.
 - Review OAuth, session, cookie, and token-revocation controls.
 - Add centralized request logs, error monitoring, and external health monitoring.
 - Configure and verify MongoDB Atlas backups. Test database recovery.

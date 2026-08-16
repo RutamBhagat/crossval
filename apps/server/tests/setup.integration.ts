@@ -1,3 +1,6 @@
+
+export {};
+
 Object.assign(process.env, {
   NODE_ENV: "test",
   DATABASE_URL:
@@ -11,3 +14,5 @@ Object.assign(process.env, {
   GOOGLE_CLIENT_SECRET:
     process.env.GOOGLE_CLIENT_SECRET ?? "test-google-client-secret",
 });
+
+await import("@crossval/db");

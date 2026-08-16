@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -18,6 +20,28 @@ function getRemoteAddress(context: Context) {
     // Unit tests and non-Node adapters do not provide connection information.
     return undefined;
   }
+}
+
+function getClientAddress(
+  remoteAddress: string | undefined,
+  forwardedFor: string | undefined,
+  trustedProxyIp: string | undefined,
+) {
+  if (!remoteAddress || remoteAddress !== trustedProxyIp) {
+    return remoteAddress;
+  }
+
+  const clientAddress = forwardedFor?.split(",", 1)[0]?.trim();
+  return clientAddress && isIP(clientAddress) ? clientAddress : remoteAddress;
+}
+
+function createClientKey(trustedProxyIp: string | undefined) {
+  return (context: Context) =>
+    getClientAddress(
+      getRemoteAddress(context),
+      context.req.header("X-Forwarded-For"),
+      trustedProxyIp,
+    );
 }
 
 function createRateLimit(options: RateLimitOptions) {
@@ -60,4 +84,4 @@ function createRateLimit(options: RateLimitOptions) {
   });
 }
 
-export { createRateLimit };
+export { createClientKey, createRateLimit, getClientAddress };
