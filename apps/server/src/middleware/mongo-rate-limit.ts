@@ -24,7 +24,7 @@ const mongoRateLimiter = new RateLimiterMongo({
   points: POINTS,
   duration: DURATION_SECONDS,
   blockDuration: BLOCK_DURATION_SECONDS,
-  inMemoryBlockOnConsumed: POINTS,
+  inMemoryBlockOnConsumed: POINTS + 1,
   inMemoryBlockDuration: BLOCK_DURATION_SECONDS,
   insuranceLimiter,
   disableIndexesCreation: true,

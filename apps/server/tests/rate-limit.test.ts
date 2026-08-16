@@ -31,9 +31,19 @@ describe("rate limit client address", () => {
     ).toBe("203.0.113.8");
   });
 
+  it("recognizes an IPv4-mapped trusted proxy address", () => {
+    expect(
+      getClientAddress(
+        "::ffff:10.0.0.21",
+        "203.0.113.8",
+        "10.0.0.21",
+      ),
+    ).toBe("203.0.113.8");
+  });
+
   it("ignores a forwarded address from an untrusted peer", () => {
     expect(
-      getClientAddress("198.51.100.4", "203.0.113.8", "10.0.0.21"),
+      getClientAddress("::ffff:198.51.100.4", "203.0.113.8", "10.0.0.21"),
     ).toBe("198.51.100.4");
   });
 

@@ -22,17 +22,33 @@ function getRemoteAddress(context: Context) {
   }
 }
 
+function normalizeIp(ip: string | undefined) {
+  if (!ip) {
+    return undefined;
+  }
+
+  const mappedIpv4 = ip.match(/^::ffff:(.+)$/i)?.[1];
+  return mappedIpv4 && isIP(mappedIpv4) === 4 ? mappedIpv4 : ip;
+}
+
 function getClientAddress(
   remoteAddress: string | undefined,
   forwardedFor: string | undefined,
   trustedProxyIp: string | undefined,
 ) {
-  if (!remoteAddress || remoteAddress !== trustedProxyIp) {
-    return remoteAddress;
+  const normalizedRemoteAddress = normalizeIp(remoteAddress);
+
+  if (
+    !normalizedRemoteAddress ||
+    normalizedRemoteAddress !== normalizeIp(trustedProxyIp)
+  ) {
+    return normalizedRemoteAddress;
   }
 
   const clientAddress = forwardedFor?.split(",", 1)[0]?.trim();
-  return clientAddress && isIP(clientAddress) ? clientAddress : remoteAddress;
+  return clientAddress && isIP(clientAddress)
+    ? normalizeIp(clientAddress)
+    : normalizedRemoteAddress;
 }
 
 function createClientKey(trustedProxyIp: string | undefined) {

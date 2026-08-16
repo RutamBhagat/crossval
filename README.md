@@ -98,7 +98,7 @@ flowchart TD
     H -->|Fail| B[Restore prior release]
 ```
 
-The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. A deployment migration creates the rate-limit indexes before the release becomes active. The API process does not create indexes. The deployment step uses a database credential with index-management permission.
+The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. A deployment migration creates the rate-limit indexes before the release becomes active. The API process does not create indexes. The migration and API use the same `DATABASE_URL` credential, which must have index-management permission.
 
 The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the check fails, it restores the prior release and restarts the service.
 

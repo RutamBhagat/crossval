@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { isIP } from "node:net";
+
 import { createEnv } from "@t3-oss/env-core";
 import { type } from "arktype";
 
@@ -18,9 +20,13 @@ const NodeEnv = type(
   "'development' | 'production' | 'test' | undefined",
 ).pipe((value) => value ?? "development");
 
-const TrustedProxyIp = type("string | undefined").pipe(
-  (value) => value ?? "10.0.0.21",
+const IpAddress = type("string").narrow((value, context) =>
+  isIP(value) ? true : context.mustBe("an IP address"),
 );
+
+const TrustedProxyIp = type("string | undefined")
+  .pipe((value) => value ?? "10.0.0.21")
+  .to(IpAddress);
 
 export const env = createEnv({
   server: {

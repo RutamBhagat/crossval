@@ -1,5 +1,4 @@
-
-export {};
+import { afterAll } from "vitest";
 
 Object.assign(process.env, {
   NODE_ENV: "test",
@@ -15,4 +14,8 @@ Object.assign(process.env, {
     process.env.GOOGLE_CLIENT_SECRET ?? "test-google-client-secret",
 });
 
-await import("@crossval/db");
+const { connection } = await import("@crossval/db");
+
+afterAll(async () => {
+  await connection.close();
+});

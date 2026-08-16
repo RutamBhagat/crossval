@@ -36,9 +36,6 @@ function stopServer() {
         resolve();
       }
     });
-    if ("closeIdleConnections" in server) {
-      server.closeIdleConnections();
-    }
   });
 }
 
@@ -81,5 +78,5 @@ async function shutdown(signal: NodeJS.Signals) {
   }
 }
 
-process.once("SIGINT", () => void shutdown("SIGINT"));
-process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
