@@ -27,14 +27,14 @@ Install these tools before you start:
 Production stack:
 
 - Vercel: Next.js frontend
-- Oracle Cloud Infrastructure (OCI): Hono API on a compute instance
+- Oracle Cloud Infrastructure (OCI): Hono API on a 2-OCPU, 12 GB RAM Arm compute instance
 - MongoDB Atlas: production database
 
 ### Deployment architecture
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API. The `API_UPSTREAM_URL` environment variable sets this upstream URL.
 
-Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy terminates TLS and removes the `/crossval` path prefix. It then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The Hono API binds to that private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
+Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy terminates TLS and removes the `/crossval` path prefix. It then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The 2-OCPU, 12 GB RAM Arm instance runs the Hono API. The API binds to its private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
 
 ```mermaid
 flowchart TD
@@ -43,6 +43,14 @@ flowchart TD
     C -->|OCI private subnet<br/>TCP 8000| A[a1: Hono API]
     A -->|TLS, outbound| M[MongoDB Atlas]
 ```
+
+### API runtime controls
+
+The API uses ArkType for request and environment validation. ArkType replaced Zod to reduce validation CPU and memory use on the constrained Arm instance.
+
+An in-memory rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
+
+The limiter state belongs to one server process and resets when that process restarts. It is not shared across multiple API instances. The limiter uses the direct socket address. Therefore, public requests currently share the Caddy proxy address and one quota.
 
 ### Network security
 
@@ -226,7 +234,8 @@ Make these changes before production use:
 
 - Add category management, CSV previews, and import history.
 - Add an audited lock removal process with clear user permissions.
-- Add rate limits and review OAuth, session, cookie, and token-revocation controls.
+- Make rate limits proxy-aware and route-specific. Use a shared limiter store before horizontal scaling.
+- Review OAuth, session, cookie, and token-revocation controls.
 - Add centralized request logs, error monitoring, and external health monitoring.
 - Configure and verify MongoDB Atlas backups. Test database recovery.
 - Add more integration and browser tests for authentication and report workflows.
