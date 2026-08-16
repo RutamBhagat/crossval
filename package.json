@@ -18,8 +18,7 @@
     "db:start": "pnpm --filter @crossval/db db:start",
     "db:watch": "pnpm --filter @crossval/db db:watch",
     "db:stop": "pnpm --filter @crossval/db db:stop",
-    "db:down": "pnpm --filter @crossval/db db:down",
-    "redis:cli": "pnpm --filter @crossval/db redis:cli"
+    "db:down": "pnpm --filter @crossval/db db:down"
   },
   "dependencies": {
     "@crossval/env": "workspace:*",

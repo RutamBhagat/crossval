@@ -170,12 +170,6 @@ mongodb://localhost:27017/crossval?replicaSet=rs0
 redis://localhost:6379
 ```
 
-Run the Redis CLI inside the Docker container:
-
-```bash
-pnpm redis:cli
-```
-
 For production, set `DATABASE_URL` to the MongoDB Atlas connection string and `REDIS_URL` to the Upstash `rediss://` connection string.
 
 To run the MongoDB and Redis integration tests, keep both services running and use:
