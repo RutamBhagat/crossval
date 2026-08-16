@@ -12,10 +12,15 @@ Object.assign(process.env, {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "test-google-client-id",
   GOOGLE_CLIENT_SECRET:
     process.env.GOOGLE_CLIENT_SECRET ?? "test-google-client-secret",
+  REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
 });
 
-const { connection } = await import("@crossval/db");
+const [{ connection }, { redisClient }] = await Promise.all([
+  import("@crossval/db"),
+  import("../src/redis"),
+]);
 
 afterAll(async () => {
   await connection.close();
+  redisClient.disconnect();
 });

@@ -3,6 +3,7 @@ import { env } from "@crossval/env/server";
 import { serve } from "@hono/node-server";
 
 import app from "./index.js";
+import { redisClient } from "./redis.js";
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -67,6 +68,13 @@ async function shutdown(signal: NodeJS.Signals) {
   } catch (error) {
     failed = true;
     console.error("Failed to close MongoDB connection", error);
+  }
+
+  try {
+    await redisClient.quit();
+  } catch (error) {
+    failed = true;
+    console.error("Failed to close Redis connection", error);
   } finally {
     clearTimeout(timeout);
   }

@@ -9,7 +9,7 @@ import { actualsRouter } from "@/routers/actuals";
 import { categoriesRouter } from "@/routers/categories";
 import { locksRouter } from "@/routers/locks";
 import { plansRouter } from "@/routers/plans";
-import { rateLimit } from "@/middleware/mongo-rate-limit";
+import { rateLimit } from "@/middleware/redis-rate-limit";
 import { reportsRouter } from "@/routers/reports";
 
 const app = new Hono().basePath("/api");

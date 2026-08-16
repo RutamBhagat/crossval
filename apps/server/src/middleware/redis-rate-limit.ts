@@ -1,10 +1,10 @@
-import { client } from "@crossval/db";
 import { env } from "@crossval/env/server";
 import {
   RateLimiterMemory,
-  RateLimiterMongo,
+  RateLimiterRedis,
 } from "rate-limiter-flexible";
 
+import { redisClient } from "../redis";
 import { createClientKey, createRateLimit } from "./rate-limit";
 
 const POINTS = 120;
@@ -17,9 +17,8 @@ const insuranceLimiter = new RateLimiterMemory({
   blockDuration: BLOCK_DURATION_SECONDS,
 });
 
-const mongoRateLimiter = new RateLimiterMongo({
-  storeClient: client,
-  tableName: "rate_limits",
+const redisRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
   keyPrefix: "api",
   points: POINTS,
   duration: DURATION_SECONDS,
@@ -27,12 +26,11 @@ const mongoRateLimiter = new RateLimiterMongo({
   inMemoryBlockOnConsumed: POINTS + 1,
   inMemoryBlockDuration: BLOCK_DURATION_SECONDS,
   insuranceLimiter,
-  disableIndexesCreation: true,
 });
 
 const rateLimit = createRateLimit({
-  limiter: mongoRateLimiter,
+  limiter: redisRateLimiter,
   key: createClientKey(env.TRUSTED_PROXY_IP),
 });
 
-export { mongoRateLimiter, rateLimit };
+export { rateLimit, redisRateLimiter };

@@ -31,6 +31,7 @@ const TrustedProxyIp = type("string | undefined")
 export const env = createEnv({
   server: {
     DATABASE_URL: type("string > 0"),
+    REDIS_URL: type("string.url"),
     BETTER_AUTH_SECRET: type("string >= 32"),
     BETTER_AUTH_URL: type("string.url"),
     GOOGLE_CLIENT_ID: type("string > 0"),

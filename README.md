@@ -42,15 +42,16 @@ flowchart TD
     V -->|HTTPS 443| C[e2-1: Caddy]
     C -->|OCI private subnet<br/>TCP 8000| A[a1: Hono API]
     A -->|TLS, outbound| M[MongoDB Atlas]
+    A -->|TLS, outbound| R[Upstash Redis]
 ```
 
 ### API runtime controls
 
 The API uses ArkType for request and environment validation. This keeps validation CPU and memory use low on the constrained Arm instance.
 
-A MongoDB-backed rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
+An Upstash Redis-backed rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
 
-MongoDB stores shared counters in the `rate_limits` collection and removes expired counters through a TTL index. An in-memory insurance limiter maintains rate-limit availability if MongoDB operations fail after application startup. Insurance counters are local to one server process and are not copied to MongoDB after recovery.
+Redis stores shared counters with key expiry. An in-memory insurance limiter maintains rate-limit availability if Redis operations fail after application startup. Insurance counters are local to one server process and are not copied to Redis after recovery.
 
 The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header.
 
@@ -62,13 +63,20 @@ The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUST
 
 The deployment uses OCI security rules, UFW, private subnet routing, and Tailscale as separate controls.
 
-| VM     | Inbound traffic allowed by UFW        | Purpose                                             |
-| ------ | ------------------------------------- | --------------------------------------------------- |
-| `e2-1` | TCP `80` and `443` from the internet  | HTTP redirect, TLS termination, and reverse proxy   |
-| `e2-1` | UDP `41641`                           | Direct Tailscale connections                        |
-| `a1`   | TCP `8000` from `e2-1` at `10.0.0.21` | Caddy-to-API traffic through the OCI private subnet |
-| `a1`   | UDP `41641`                           | Direct Tailscale connections                        |
-| Both   | Traffic on `tailscale0`               | Authenticated administration and deployment traffic |
+Rules for `e2-1`:
+
+| Inbound traffic allowed by UFW       | Purpose                                           |
+| ------------------------------------ | ------------------------------------------------- |
+| TCP `80` and `443` from the internet | HTTP redirect, TLS termination, and reverse proxy |
+| UDP `41641`                          | Direct Tailscale connections                      |
+
+Rules for `a1` and both VMs:
+
+| VM   | Inbound traffic allowed by UFW        | Purpose                                             |
+| ---- | ------------------------------------- | --------------------------------------------------- |
+| `a1` | TCP `8000` from `e2-1` at `10.0.0.21` | Caddy-to-API traffic through the OCI private subnet |
+| `a1` | UDP `41641`                           | Direct Tailscale connections                        |
+| Both | Traffic on `tailscale0`               | Authenticated administration and deployment traffic |
 
 UFW denies other inbound traffic by default. OCI security rules apply the same minimum-access model before traffic reaches each VM. SSH listens on the hosts, but the public firewall does not admit TCP `22`. Administrators connect through Tailscale instead.
 
@@ -91,20 +99,19 @@ flowchart TD
     G -->|Workload identity federation| T[Ephemeral tag:ci tailnet node]
     T -->|Tailscale SSH and SCP| A[a1]
     A --> R[Install and build versioned release]
-    R --> I[Create rate-limit indexes]
-    I --> S[Switch current symlink and restart]
+    R --> S[Switch current symlink and restart]
     S --> H[Local health check]
     H -->|Pass| K[Keep new release]
     H -->|Fail| B[Restore prior release]
 ```
 
-The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. A deployment migration creates the rate-limit indexes before the release becomes active. The API process does not create indexes. The migration and API use the same `DATABASE_URL` credential, which must have index-management permission.
+The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. The API uses `DATABASE_URL` for application data and `REDIS_URL` for shared rate-limit counters.
 
 The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the check fails, it restores the prior release and restarts the service.
 
 The public request path and private deployment path are independent. Caddy can continue to serve the active release while GitHub Actions uploads and builds the next release through Tailscale.
 
-The Docker Compose MongoDB configuration is only for local development.
+The Docker Compose MongoDB and Redis configuration is only for local development.
 
 ## Local setup
 
@@ -141,7 +148,7 @@ The Docker Compose MongoDB configuration is only for local development.
    ```
 
 7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `apps/server/.env`.
-8. Start MongoDB:
+8. Start MongoDB and Redis:
 
    ```bash
    pnpm db:start
@@ -155,23 +162,24 @@ The Docker Compose MongoDB configuration is only for local development.
 
 10. Open [http://localhost:3000](http://localhost:3000). The API listens on [http://localhost:8000](http://localhost:8000).
 
-The local MongoDB database requires Docker. It runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses this connection:
+The local MongoDB database and Redis service require Docker. MongoDB runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses these connections:
 
 ```text
 mongodb://localhost:27017/crossval?replicaSet=rs0
+redis://localhost:6379
 ```
 
-For production, you can replace the local database with MongoDB Atlas. Set `DATABASE_URL` to the MongoDB Atlas connection string.
+For production, set `DATABASE_URL` to the MongoDB Atlas connection string and `REDIS_URL` to the Upstash `rediss://` connection string.
 
-To run the MongoDB integration tests, keep MongoDB running and use:
+To run the MongoDB and Redis integration tests, keep both services running and use:
 
 ```bash
 pnpm test:integration
 ```
 
-The tests use the `crossval_integration` database by default. Set `INTEGRATION_DATABASE_URL` to use a different test replica set.
+The tests use the `crossval_integration` database and `redis://localhost:6379` by default. Set `INTEGRATION_DATABASE_URL` or `REDIS_URL` to use different test services.
 
-To stop MongoDB, run:
+To stop MongoDB and Redis, run:
 
 ```bash
 pnpm db:stop
@@ -220,44 +228,52 @@ The import checks the month, category, and amount in each row. The import accept
 
 Crossval supports Google OAuth only. It does not support email and password authentication or magic links.
 
-This choice reduces the authentication code and sensitive credential data that Crossval must manage. For Google sign-in, CrossVal depends on Google's verified identity/email claims rather than independently verifying ownership via transactional email. It also manages passwords, multi-factor authentication, account recovery, and abuse controls. Crossval does not need password storage or password reset flows. It also does not need verification email delivery through Amazon SES, Resend, or another provider. Google sign-in reduces friction for users who already have a Google account.
+This choice reduces the authentication code and sensitive credential data in Crossval. Crossval depends on verified identity and email claims from Google. Crossval does not independently verify ownership through transactional email. Google manages passwords, multi-factor authentication, account recovery, and abuse controls. Crossval does not need password storage, password reset flows, or verification email delivery. Google sign-in also reduces access steps for users who have a Google account.
 
 Google OAuth is not inherently secure in every deployment. It reduces the application-controlled authentication surface by delegating credential security to Google. Crossval must still protect OAuth secrets, redirect URIs, sessions, cookies, and user authorization.
 
 The main tradeoff is provider dependence. Every user must have a Google account, and sign-in depends on Google availability and policy. Crossval cannot control Google account recovery. This choice can also exclude users or organizations that do not permit Google accounts.
 
-Supporting local credentials later would require email verification, password reset, rate limits, anti-enumeration controls, secure account linking, and transactional email delivery.
+Local credentials would require email verification, password reset, rate limits, and anti-enumeration controls. They would also require secure account linking and transactional email delivery.
 
 ### Rate-limit storage
 
-An in-memory limiter was probably the correct operational choice for the current single-process API. It has the lowest latency and needs no external store. However, its counters reset during restarts and cannot support a shared limit across multiple API processes.
+Upstash Redis stores shared, disposable counters across API processes and preserves rate-limit behavior during application restarts. Counter keys expire automatically. The API connects through TLS with one persistent Redis connection per process.
 
-The implementation uses shared counters, but the deployment does not introduce Redis yet. Redis would add another service to deploy, secure, monitor, and maintain. Crossval already depends on MongoDB, so the limiter uses a separate MongoDB collection instead.
-
-With PostgreSQL, an unlogged table would give shared, disposable counters without write-ahead logging. MongoDB has no equivalent collection-level unlogged mode. Its rate-limit writes use the normal MongoDB journal and replication path.
-
-MongoDB Atlas adds a network hop to every rate-limit check. A local MongoDB instance on the API server would reduce this latency. That design would add database operations on the API host and create a single-host dependency.
+This adds a network request to each rate-limit check and makes Upstash an external runtime dependency. An in-memory insurance limiter keeps the API available during Redis failures. The limiter does not synchronize its process-local counters after recovery.
 
 ### Product and data model
 
 - The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December. Custom fiscal-year start months are out of scope.
+
 - All amounts use USD. The database stores nonnegative amounts as whole cents to prevent floating-point rounding errors.
+
 - Marketing, Payroll, and Tools are a fixed seed list. Category CRUD is out of scope for this version.
-- Each user can have one plan for each category and month. A user can add multiple actual entries, and the report adds them together.
-- CSV import accepts one file at a time. It has no preview and rejects the full file if one row is invalid.
-- Users cannot remove locks. An administrator or controlled lock removal process would be necessary for corrections.
+
+- Each user can have one plan for each category and month. A user can add multiple actual entries. The report adds the entries together.
+
+- CSV import accepts one file at a time. It has no preview. It rejects the full file if one row is invalid.
+
+- Users cannot remove locks. An administrator or controlled lock removal process is necessary for corrections.
 
 ## Production improvements
 
 Make these changes before production use:
 
 - Add category management, CSV previews, and import history.
+
 - Add an audited lock removal process with clear user permissions.
+
 - Add route-specific rate limits for authentication and general API traffic.
+
 - Review OAuth, session, cookie, and token-revocation controls.
+
 - Add centralized request logs, error monitoring, and external health monitoring.
+
 - Configure and verify MongoDB Atlas backups. Test database recovery.
+
 - Add more integration and browser tests for authentication and report workflows.
+
 - Complete an accessibility and security review.
 
 ## Query approach at larger scale
