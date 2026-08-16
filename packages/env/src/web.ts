@@ -1,8 +1,10 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { type } from "arktype";
 
-const ApiOriginToken = type("string").narrow((value) =>
-  /^[0-9a-f]{64}$/.test(value),
+const ApiOriginToken = type("string").narrow(
+  (value, context) =>
+    /^[0-9a-f]{64}$/.test(value) ||
+    context.mustBe("a 64-character lowercase hexadecimal string"),
 );
 
 const ApiUpstreamUrl = type("string | undefined")
