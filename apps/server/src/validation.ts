@@ -1,3 +1,5 @@
+import "@/validation-config";
+
 import { type } from "arktype";
 
 import { categories } from "@crossval/domain/categories";

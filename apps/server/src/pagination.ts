@@ -1,10 +1,12 @@
+import "@/validation-config";
+
 import { type } from "arktype";
 
-const Offset = type("string.numeric.parse")
+const Offset = type("string.integer.parse")
   .to("number.integer >= 0")
   .configure({ message: "Offset must be zero or greater" });
 
-const Limit = type("string.numeric.parse")
+const Limit = type("string.integer.parse")
   .to("1 <= number.integer <= 50")
   .configure({ message: "Limit must be between 1 and 50" });
 

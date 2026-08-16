@@ -10,7 +10,7 @@ const Host = type("string | undefined").pipe(
   (value) => value ?? "0.0.0.0",
 );
 
-const Port = type("string.numeric.parse | undefined")
+const Port = type("string.integer.parse | undefined")
   .pipe((value) => value ?? 8000)
   .to("1 <= number.integer <= 65535");
 
