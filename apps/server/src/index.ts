@@ -8,6 +8,7 @@ import { actualsRouter } from "@/routers/actuals";
 import { categoriesRouter } from "@/routers/categories";
 import { locksRouter } from "@/routers/locks";
 import { plansRouter } from "@/routers/plans";
+import { rateLimit } from "@/middleware/rate-limit";
 import { reportsRouter } from "@/routers/reports";
 
 const app = new Hono().basePath("/api");
@@ -22,6 +23,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use("*", rateLimit);
 app.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/actuals", actualsRouter);
 app.route("/categories", categoriesRouter);
