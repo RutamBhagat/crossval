@@ -66,7 +66,7 @@ The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUST
 
 `API_ORIGIN_TOKEN` must be a 64-character lowercase hexadecimal secret. It must have the same value in the Vercel project and the Caddy service environment. This token is a security credential for client-IP authenticity. Rotate it if it leaks, never log it intentionally, and do not expose it through a `NEXT_PUBLIC_` variable.
 
-Configure Caddy manually on `e2-1`. The VM serves other applications, so Crossval CI does not install or modify its Caddy configuration. Use `deploy/Caddyfile.crossval` as the version-controlled reference configuration only. The `/crossval/*` handler must verify the exact origin token and its hexadecimal format. It must overwrite `X-Forwarded-For` with `X-Crossval-Client-IP`, remove all `X-Crossval-*` headers, and reject unauthorized requests with HTTP status `403`.
+Configure Caddy manually on `e2-1`. The VM serves other applications, so Crossval CI does not install or modify its Caddy configuration. Use `deploy/Caddyfile.crossval` as the version-controlled reference configuration only. Its parent site must use a `respond 404` fallback instead of a catch-all `handle`. The `/crossval/*` handler must verify the exact origin token and its hexadecimal format. It must overwrite `X-Forwarded-For` with `X-Crossval-Client-IP`, remove all `X-Crossval-*` headers, and reject unauthorized requests with HTTP status `403`.
 
 ### Graceful shutdown
 

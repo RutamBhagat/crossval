@@ -1,5 +1,6 @@
 # Reference configuration only. Crossval CI does not install this file.
 # Manually import it inside the public API site block on e2-1.
+# The parent site must use a `respond 404` fallback, not a catch-all `handle`.
 # The caddy service must receive API_ORIGIN_TOKEN through an EnvironmentFile.
 
 @crossval path /crossval/*
