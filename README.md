@@ -48,9 +48,11 @@ flowchart TD
 
 The API uses ArkType for request and environment validation. ArkType replaced Zod to reduce validation CPU and memory use on the constrained Arm instance.
 
-An in-memory rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
+A MongoDB-backed rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
 
-The limiter state belongs to one server process and resets when that process restarts. It is not shared across multiple API instances. The limiter uses the direct socket address. Therefore, public requests currently share the Caddy proxy address and one quota.
+MongoDB stores shared counters in the `rate_limits` collection and removes expired counters through a TTL index. An in-memory insurance limiter maintains service if MongoDB returns an error. Insurance counters are local to one server process and are not copied to MongoDB after recovery.
+
+The limiter uses the direct socket address. Therefore, public requests currently share the Caddy proxy address and one quota.
 
 ### Network security
 
@@ -219,6 +221,16 @@ The main tradeoff is provider dependence. Every user must have a Google account,
 
 Supporting local credentials later would require email verification, password reset, rate limits, anti-enumeration controls, secure account linking, and transactional email delivery.
 
+### Rate-limit storage
+
+An in-memory limiter was probably the correct operational choice for the current single-process API. It has the lowest latency and needs no external store. However, its counters reset during restarts and cannot support a shared limit across multiple API processes.
+
+The implementation uses shared counters, but the deployment does not introduce Redis yet. Redis would add another service to deploy, secure, monitor, and maintain. Crossval already depends on MongoDB, so the limiter uses a separate MongoDB collection instead.
+
+With PostgreSQL, an unlogged table would give shared, disposable counters without write-ahead logging. MongoDB has no equivalent collection-level unlogged mode. Its rate-limit writes use the normal MongoDB journal and replication path.
+
+MongoDB Atlas adds a network hop to every rate-limit check. A local MongoDB instance on the API server would reduce this latency. That design would add database operations on the API host and create a single-host dependency.
+
 ### Product and data model
 
 - The application uses calendar months in `YYYY-MM` format. Fiscal years run from January through December. Custom fiscal-year start months are out of scope.
@@ -234,7 +246,7 @@ Make these changes before production use:
 
 - Add category management, CSV previews, and import history.
 - Add an audited lock removal process with clear user permissions.
-- Make rate limits proxy-aware and route-specific. Use a shared limiter store before horizontal scaling.
+- Make rate limits proxy-aware and route-specific.
 - Review OAuth, session, cookie, and token-revocation controls.
 - Add centralized request logs, error monitoring, and external health monitoring.
 - Configure and verify MongoDB Atlas backups. Test database recovery.

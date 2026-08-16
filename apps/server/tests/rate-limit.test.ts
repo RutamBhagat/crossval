@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { RateLimiterMemory } from "rate-limiter-flexible";
 import { describe, expect, it } from "vitest";
 
 import { createRateLimit } from "../src/middleware/rate-limit";
@@ -8,8 +9,8 @@ function createTestApp(points = 2) {
   app.use(
     "*",
     createRateLimit({
+      limiter: new RateLimiterMemory({ points, duration: 60 }),
       key: () => "client-1",
-      points,
     }),
   );
   app.get("/", (context) => context.json({ ok: true }));
@@ -46,7 +47,13 @@ describe("rate limit middleware", () => {
 
   it("fails open when no client key is available", async () => {
     const app = new Hono();
-    app.use("*", createRateLimit({ key: () => undefined, points: 1 }));
+    app.use(
+      "*",
+      createRateLimit({
+        limiter: new RateLimiterMemory({ points: 1, duration: 60 }),
+        key: () => undefined,
+      }),
+    );
     app.get("/", (context) => context.text("ok"));
 
     const first = await app.request("/");
