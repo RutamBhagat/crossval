@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { afterEach, describe, expect, it } from "vitest";
 
+import app from "../src/index";
 import { redisRateLimiter } from "../src/middleware/redis-rate-limit";
 import { redisClient } from "../src/redis";
 
@@ -18,6 +19,14 @@ describe("Redis rate limiter integration", () => {
   afterEach(async () => {
     await Promise.all([...keys].map((key) => redisRateLimiter.delete(key)));
     keys.clear();
+  });
+
+  it("excludes the actual health route", async () => {
+    const response = await app.request("/api/health");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.has("RateLimit-Limit")).toBe(false);
+    expect(response.headers.has("RateLimit-Remaining")).toBe(false);
   });
 
   it("shares counters between limiter instances", async () => {
