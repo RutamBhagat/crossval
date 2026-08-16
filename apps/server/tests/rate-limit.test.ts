@@ -82,6 +82,29 @@ describe("rate limit middleware", () => {
     });
   });
 
+  it("skips excluded routes without consuming points", async () => {
+    const app = new Hono();
+    app.use(
+      "*",
+      createRateLimit({
+        limiter: new RateLimiterMemory({ points: 1, duration: 60 }),
+        key: () => "client-1",
+        skip: (context) => context.req.path === "/health",
+      }),
+    );
+    app.get("/health", (context) => context.text("ok"));
+    app.get("/data", (context) => context.text("ok"));
+
+    const health = await app.request("/health");
+    const firstData = await app.request("/data");
+    const secondData = await app.request("/data");
+
+    expect(health.status).toBe(200);
+    expect(health.headers.has("RateLimit-Limit")).toBe(false);
+    expect(firstData.status).toBe(200);
+    expect(secondData.status).toBe(429);
+  });
+
   it("fails open when no client key is available", async () => {
     const app = new Hono();
     app.use(

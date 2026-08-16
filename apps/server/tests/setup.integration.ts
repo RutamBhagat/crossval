@@ -12,7 +12,8 @@ Object.assign(process.env, {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "test-google-client-id",
   GOOGLE_CLIENT_SECRET:
     process.env.GOOGLE_CLIENT_SECRET ?? "test-google-client-secret",
-  REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
+  REDIS_URL:
+    process.env.INTEGRATION_REDIS_URL ?? "redis://localhost:6379",
 });
 
 const [{ connection }, { redisClient }] = await Promise.all([

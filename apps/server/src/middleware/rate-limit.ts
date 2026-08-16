@@ -11,6 +11,7 @@ import {
 type RateLimitOptions = {
   limiter: RateLimiterAbstract;
   key?: (context: Context) => string | undefined;
+  skip?: (context: Context) => boolean;
 };
 
 function getRemoteAddress(context: Context) {
@@ -65,6 +66,10 @@ function createRateLimit(options: RateLimitOptions) {
   const getKey = options.key ?? getRemoteAddress;
 
   return createMiddleware(async (context, next) => {
+    if (options.skip?.(context)) {
+      return next();
+    }
+
     const key = getKey(context);
 
     // The policy is fail-open when the runtime cannot provide a client address.

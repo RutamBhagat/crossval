@@ -29,6 +29,7 @@ Production stack:
 - Vercel: Next.js frontend
 - Oracle Cloud Infrastructure (OCI): Hono API on a 2-OCPU, 12 GB RAM Arm compute instance
 - MongoDB Atlas: production database
+- Upstash Redis: shared rate-limit counters
 
 ### Deployment architecture
 
@@ -49,15 +50,15 @@ flowchart TD
 
 The API uses ArkType for request and environment validation. This keeps validation CPU and memory use low on the constrained Arm instance.
 
-An Upstash Redis-backed rate limiter applies to all API routes. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
+An Upstash Redis-backed rate limiter applies to all API routes except `/api/health`. It allows 120 requests per remote network address in each 60-second period. It blocks excess requests for 60 seconds and returns HTTP status `429`. Responses include `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` when applicable.
 
-Redis stores shared counters with key expiry. An in-memory insurance limiter maintains rate-limit availability if Redis operations fail after application startup. Insurance counters are local to one server process and are not copied to Redis after recovery.
+Redis stores shared counters with key expiry. Redis commands have a one-second timeout. Redis connections have a three-second timeout. An in-memory insurance limiter maintains rate-limit availability during Redis failures. Insurance counters are local to one server process. The limiter does not copy them to Redis after recovery.
 
 The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header.
 
 ### Graceful shutdown
 
-`SIGINT` or `SIGTERM` starts a graceful shutdown. The API stops new connections, closes idle connections, and waits for active requests. It then closes the MongoDB connection. A second signal or a 10-second timeout closes all remaining connections and forces the process to exit.
+`SIGINT` or `SIGTERM` starts a graceful shutdown. The API stops new connections and closes idle connections. It waits for active requests. It then closes the MongoDB and Redis connections. A second signal or a 10-second timeout closes all remaining connections and forces the process to exit.
 
 ### Network security
 
@@ -107,7 +108,7 @@ flowchart TD
 
 The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. The API uses `DATABASE_URL` for application data and `REDIS_URL` for shared rate-limit counters.
 
-The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the check fails, it restores the prior release and restarts the service.
+The workflow sends a Redis `PING` before it activates a release. A failed Redis check stops the deployment. The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the health check fails, it restores the prior release and restarts the service.
 
 The public request path and private deployment path are independent. Caddy can continue to serve the active release while GitHub Actions uploads and builds the next release through Tailscale.
 
@@ -177,7 +178,7 @@ To run the MongoDB and Redis integration tests, keep both services running and u
 pnpm test:integration
 ```
 
-The tests use the `crossval_integration` database and `redis://localhost:6379` by default. Set `INTEGRATION_DATABASE_URL` or `REDIS_URL` to use different test services.
+The tests use the `crossval_integration` database and `redis://localhost:6379` by default. Set `INTEGRATION_DATABASE_URL` or `INTEGRATION_REDIS_URL` to use different test services.
 
 To stop MongoDB and Redis, run:
 
@@ -296,7 +297,7 @@ Run the server unit tests:
 pnpm test
 ```
 
-Run the database and server integration tests while the local MongoDB replica set is active:
+Run the integration tests while the local MongoDB and Redis services are active:
 
 ```bash
 pnpm test:integration

@@ -96,6 +96,9 @@ jobs:
           sudo ./deploy/install-systemd-unit.sh
           pnpm install --frozen-lockfile
           pnpm --filter server build
+          sudo /usr/bin/node \
+            --env-file="$root/server.env" \
+            "$release/apps/server/dist/scripts/check-redis.mjs"
 
           ln -sfn "$release" "$root/current.next"
           mv -Tf "$root/current.next" "$root/current"

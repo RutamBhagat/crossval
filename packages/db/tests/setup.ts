@@ -11,4 +11,5 @@ process.env.GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ?? "test-google-client-id";
 process.env.GOOGLE_CLIENT_SECRET =
   process.env.GOOGLE_CLIENT_SECRET ?? "test-google-client-secret";
-process.env.REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
+process.env.REDIS_URL =
+  process.env.INTEGRATION_REDIS_URL ?? "redis://localhost:6379";

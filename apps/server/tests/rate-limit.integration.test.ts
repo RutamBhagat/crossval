@@ -24,7 +24,7 @@ describe("Redis rate limiter integration", () => {
     const key = testKey();
     const secondLimiter = new RateLimiterRedis({
       storeClient: redisClient,
-      keyPrefix: "api",
+      keyPrefix: "crossval:rl:api",
       points: 120,
       duration: 60,
       blockDuration: 60,

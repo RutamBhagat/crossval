@@ -19,10 +19,11 @@ const insuranceLimiter = new RateLimiterMemory({
 
 const redisRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  keyPrefix: "api",
+  keyPrefix: "crossval:rl:api",
   points: POINTS,
   duration: DURATION_SECONDS,
   blockDuration: BLOCK_DURATION_SECONDS,
+  rejectIfRedisNotReady: true,
   inMemoryBlockOnConsumed: POINTS + 1,
   inMemoryBlockDuration: BLOCK_DURATION_SECONDS,
   insuranceLimiter,
@@ -31,6 +32,7 @@ const redisRateLimiter = new RateLimiterRedis({
 const rateLimit = createRateLimit({
   limiter: redisRateLimiter,
   key: createClientKey(env.TRUSTED_PROXY_IP),
+  skip: (context) => context.req.path === "/api/health",
 });
 
 export { rateLimit, redisRateLimiter };
