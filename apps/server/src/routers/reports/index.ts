@@ -5,7 +5,7 @@ import {
   type MonthlyVariance,
   type ReportRow,
 } from "@crossval/domain/report";
-import { zValidator } from "@hono/zod-validator";
+import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
 
 import { requireAuth, type AuthVariables } from "@/middleware/auth";
@@ -187,10 +187,10 @@ reportsRouter.use("*", requireAuth);
 
 reportsRouter.get(
   "/actuals",
-  zValidator("query", reportActualsQuerySchema, (result, c) => {
+  sValidator("query", reportActualsQuerySchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid report row" },
+        { error: result.error[0]?.message ?? "Invalid report row" },
         400,
       );
     }
@@ -217,10 +217,10 @@ reportsRouter.get(
 
 reportsRouter.get(
   "/export",
-  zValidator("query", reportExportQuerySchema, (result, c) => {
+  sValidator("query", reportExportQuerySchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid report range" },
+        { error: result.error[0]?.message ?? "Invalid report range" },
         400,
       );
     }
@@ -247,10 +247,10 @@ reportsRouter.get(
 
 reportsRouter.get(
   "/",
-  zValidator("query", reportQuerySchema, (result, c) => {
+  sValidator("query", reportQuerySchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid report range" },
+        { error: result.error[0]?.message ?? "Invalid report range" },
         400,
       );
     }

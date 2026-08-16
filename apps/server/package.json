@@ -19,11 +19,11 @@
     "@crossval/domain": "workspace:*",
     "@crossval/env": "workspace:*",
     "@hono/node-server": "^1.19.11",
-    "@hono/zod-validator": "^0.9.0",
+    "@hono/standard-validator": "^0.4.0",
+    "arktype": "catalog:",
     "csv-parse": "^7.0.2",
     "hono": "^4.12.32",
-    "rate-limiter-flexible": "^11.2.0",
-    "zod": "catalog:"
+    "rate-limiter-flexible": "^11.2.0"
   },
   "devDependencies": {
     "@crossval/config": "workspace:*",

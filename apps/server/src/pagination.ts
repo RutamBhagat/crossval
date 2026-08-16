@@ -1,17 +1,16 @@
-import { z } from "zod";
+import { type } from "arktype";
 
-const paginationQuerySchema = z.object({
-  offset: z.coerce
-    .number()
-    .int()
-    .min(0, "Offset must be zero or greater")
-    .default(0),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1, "Limit must be at least 1")
-    .max(50, "Limit must be 50 or less")
-    .default(10),
-});
+const Offset = type("string.numeric.parse")
+  .to("number.integer >= 0")
+  .configure({ message: "Offset must be zero or greater" });
 
-export { paginationQuerySchema };
+const Limit = type("string.numeric.parse")
+  .to("1 <= number.integer <= 50")
+  .configure({ message: "Limit must be between 1 and 50" });
+
+const paginationQueryFields = {
+  offset: Offset.default("0"),
+  limit: Limit.default("10"),
+} as const;
+
+export { paginationQueryFields };

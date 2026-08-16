@@ -1,20 +1,34 @@
 import "dotenv/config";
 import { createEnv } from "@t3-oss/env-core";
-import { z } from "zod";
+import { type } from "arktype";
+
+const CorsOrigin = type("string | undefined")
+  .pipe((value) => value ?? "http://localhost:3000")
+  .to("string.url");
+
+const Host = type("string | undefined").pipe(
+  (value) => value ?? "0.0.0.0",
+);
+
+const Port = type("string.numeric.parse | undefined")
+  .pipe((value) => value ?? 8000)
+  .to("1 <= number.integer <= 65535");
+
+const NodeEnv = type(
+  "'development' | 'production' | 'test' | undefined",
+).pipe((value) => value ?? "development");
 
 export const env = createEnv({
   server: {
-    DATABASE_URL: z.string().min(1),
-    BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.url(),
-    GOOGLE_CLIENT_ID: z.string().min(1),
-    GOOGLE_CLIENT_SECRET: z.string().min(1),
-    CORS_ORIGIN: z.url().default("http://localhost:3000"),
-    HOST: z.string().default("0.0.0.0"),
-    PORT: z.coerce.number().int().min(1).max(65535).default(8000),
-    NODE_ENV: z
-      .enum(["development", "production", "test"])
-      .default("development"),
+    DATABASE_URL: type("string > 0"),
+    BETTER_AUTH_SECRET: type("string >= 32"),
+    BETTER_AUTH_URL: type("string.url"),
+    GOOGLE_CLIENT_ID: type("string > 0"),
+    GOOGLE_CLIENT_SECRET: type("string > 0"),
+    CORS_ORIGIN: CorsOrigin,
+    HOST: Host,
+    PORT: Port,
+    NODE_ENV: NodeEnv,
   },
   runtimeEnv: process.env,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

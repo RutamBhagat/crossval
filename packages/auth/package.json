@@ -15,8 +15,7 @@
     "@crossval/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "mongodb": "^7.5.0",
-    "zod": "catalog:"
+    "mongodb": "^7.5.0"
   },
   "devDependencies": {
     "@crossval/config": "workspace:*",

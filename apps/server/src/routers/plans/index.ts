@@ -1,4 +1,4 @@
-import { zValidator } from "@hono/zod-validator";
+import { sValidator } from "@hono/standard-validator";
 import { Plan } from "@crossval/db/models/plan.model";
 import { runIfPeriodsOpen } from "@crossval/db/period-state";
 import { Hono } from "hono";
@@ -14,10 +14,10 @@ plansRouter.use("*", requireAuth);
 
 plansRouter.get(
   "/",
-  zValidator("query", plansQuerySchema, (result, c) => {
+  sValidator("query", plansQuerySchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid query" },
+        { error: result.error[0]?.message ?? "Invalid query" },
         400,
       );
     }
@@ -56,10 +56,10 @@ plansRouter.get(
 
 plansRouter.put(
   "/",
-  zValidator("json", planInputSchema, (result, c) => {
+  sValidator("json", planInputSchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid plan" },
+        { error: result.error[0]?.message ?? "Invalid plan" },
         400,
       );
     }

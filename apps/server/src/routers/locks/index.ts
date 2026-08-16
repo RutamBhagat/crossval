@@ -1,6 +1,6 @@
 import { PeriodState } from "@crossval/db/models/period-state.model";
 import { closePeriod } from "@crossval/db/period-state";
-import { zValidator } from "@hono/zod-validator";
+import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
 
 import { requireAuth, type AuthVariables } from "@/middleware/auth";
@@ -29,10 +29,10 @@ locksRouter.get("/", async (c) => {
 
 locksRouter.put(
   "/",
-  zValidator("json", lockInputSchema, (result, c) => {
+  sValidator("json", lockInputSchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid lock" },
+        { error: result.error[0]?.message ?? "Invalid lock" },
         400,
       );
     }

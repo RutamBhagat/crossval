@@ -1,9 +1,13 @@
 import { createEnv } from "@t3-oss/env-nextjs";
-import { z } from "zod";
+import { type } from "arktype";
+
+const ApiUpstreamUrl = type("string | undefined")
+  .pipe((value) => value ?? "http://localhost:8000/crossval")
+  .to("string.url");
 
 export const env = createEnv({
   server: {
-    API_UPSTREAM_URL: z.url().default("http://localhost:8000/crossval"),
+    API_UPSTREAM_URL: ApiUpstreamUrl,
   },
   runtimeEnv: {
     API_UPSTREAM_URL: process.env.API_UPSTREAM_URL,

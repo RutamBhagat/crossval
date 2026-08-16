@@ -15,6 +15,9 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.4
+    arktype:
+      specifier: ^2.2.3
+      version: 2.2.3
     better-auth:
       specifier: 1.6.25
       version: 1.6.25
@@ -42,9 +45,6 @@ catalogs:
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
-    zod:
-      specifier: ^4.4.3
-      version: 4.4.3
 
 importers:
 
@@ -56,9 +56,6 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 17.4.2
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@crossval/config':
         specifier: workspace:*
@@ -87,9 +84,12 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.11
         version: 1.19.17(hono@4.13.1)
-      '@hono/zod-validator':
-        specifier: ^0.9.0
-        version: 0.9.0(hono@4.13.1)(zod@4.4.3)
+      '@hono/standard-validator':
+        specifier: ^0.4.0
+        version: 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.1)
+      arktype:
+        specifier: 'catalog:'
+        version: 2.2.3
       csv-parse:
         specifier: ^7.0.2
         version: 7.0.2
@@ -99,9 +99,6 @@ importers:
       rate-limiter-flexible:
         specifier: ^11.2.0
         version: 11.2.0
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@crossval/config':
         specifier: workspace:*
@@ -200,9 +197,6 @@ importers:
       mongodb:
         specifier: ^7.5.0
         version: 7.5.0
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@crossval/config':
         specifier: workspace:*
@@ -224,9 +218,6 @@ importers:
       mongoose:
         specifier: ^9.8.1
         version: 9.9.1
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@crossval/config':
         specifier: workspace:*
@@ -251,16 +242,16 @@ importers:
     dependencies:
       '@t3-oss/env-core':
         specifier: ^0.13.11
-        version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
+        version: 0.13.11(arktype@2.2.3)(typescript@6.0.3)(zod@4.4.3)
       '@t3-oss/env-nextjs':
         specifier: ^0.13.11
-        version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
+        version: 0.13.11(arktype@2.2.3)(typescript@6.0.3)(zod@4.4.3)
+      arktype:
+        specifier: 'catalog:'
+        version: 2.2.3
       dotenv:
         specifier: 'catalog:'
         version: 17.4.2
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@crossval/config':
         specifier: workspace:*
@@ -338,6 +329,12 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
+
+  '@ark/schema@0.56.2':
+    resolution: {integrity: sha512-Qx4D2JFbBWpntiHZaTv7bGG4H/M2rigiknezKg/WVyDSaLdE4YCcWAOoFB7pjjDqHbbV2OqRfntm1nnXvwMexg==}
+
+  '@ark/util@0.56.2':
+    resolution: {integrity: sha512-9kU2sUE38FZEGG7l3hamYMBieLYEJh2L1mrYD2eXpT+78EnQSV1bhjxJhnxGBMSTbtwpBSDNSK+K60WvaI/DTQ==}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -774,11 +771,11 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-validator@0.9.0':
-    resolution: {integrity: sha512-n0ZSXmCiHVIp4Y5wlOOyZCeTd/rsawA/qW1cipB8QOYKZ9N8Tk0nZUZCXho9cu374AN4JpDNKioNKBJ/W+LBug==}
+  '@hono/standard-validator@0.4.0':
+    resolution: {integrity: sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw==}
     peerDependencies:
+      '@standard-schema/spec': ^1.0.0
       hono: '>=4.11.2'
-      zod: ^3.25.0 || ^4.0.0
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -1594,6 +1591,12 @@ packages:
 
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
+
+  arkregex@0.0.8:
+    resolution: {integrity: sha512-PJcx6G1kQTgLKPUbeYlYecDRaKq15AMSGVajlKFYWlPeJRQL+j3dKE6tyMs40HZ99djS1l9Vhl3ezAHy9JBIqQ==}
+
+  arktype@2.2.3:
+    resolution: {integrity: sha512-7W+0RLTUNJiBFIIZXwOQxSR8Z273IAd6IvqBeG9+gHnQKFsIx2C0iOtGTmMrPnlX4qLXyc5+ll7A0BIj9WrbTg==}
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -3432,6 +3435,12 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
+  '@ark/schema@0.56.2':
+    dependencies:
+      '@ark/util': 0.56.2
+
+  '@ark/util@0.56.2': {}
+
   '@babel/code-frame@7.29.7':
     dependencies:
       '@babel/helper-validator-identifier': 7.29.7
@@ -3830,10 +3839,10 @@ snapshots:
     dependencies:
       hono: 4.13.1
 
-  '@hono/zod-validator@0.9.0(hono@4.13.1)(zod@4.4.3)':
+  '@hono/standard-validator@0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.1)':
     dependencies:
+      '@standard-schema/spec': 1.1.0
       hono: 4.13.1
-      zod: 4.4.3
 
   '@img/colour@1.1.0':
     optional: true
@@ -4114,15 +4123,17 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@t3-oss/env-core@0.13.11(typescript@6.0.3)(zod@4.4.3)':
+  '@t3-oss/env-core@0.13.11(arktype@2.2.3)(typescript@6.0.3)(zod@4.4.3)':
     optionalDependencies:
+      arktype: 2.2.3
       typescript: 6.0.3
       zod: 4.4.3
 
-  '@t3-oss/env-nextjs@0.13.11(typescript@6.0.3)(zod@4.4.3)':
+  '@t3-oss/env-nextjs@0.13.11(arktype@2.2.3)(typescript@6.0.3)(zod@4.4.3)':
     dependencies:
-      '@t3-oss/env-core': 0.13.11(typescript@6.0.3)(zod@4.4.3)
+      '@t3-oss/env-core': 0.13.11(arktype@2.2.3)(typescript@6.0.3)(zod@4.4.3)
     optionalDependencies:
+      arktype: 2.2.3
       typescript: 6.0.3
       zod: 4.4.3
 
@@ -4420,6 +4431,16 @@ snapshots:
   ansis@4.3.1: {}
 
   argparse@2.0.1: {}
+
+  arkregex@0.0.8:
+    dependencies:
+      '@ark/util': 0.56.2
+
+  arktype@2.2.3:
+    dependencies:
+      '@ark/schema': 0.56.2
+      '@ark/util': 0.56.2
+      arkregex: 0.0.8
 
   assertion-error@2.0.1: {}
 

@@ -1,7 +1,7 @@
-import { z } from "zod";
+import { type } from "arktype";
 
-const lockInputSchema = z.object({
-  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Month must use YYYY-MM"),
-});
+import { Month } from "@/validation";
+
+const lockInputSchema = type({ month: Month });
 
 export { lockInputSchema };

@@ -1,6 +1,6 @@
 import { Actual } from "@crossval/db/models/actual.model";
 import { runIfPeriodsOpen } from "@crossval/db/period-state";
-import { zValidator } from "@hono/zod-validator";
+import { sValidator } from "@hono/standard-validator";
 import { parse } from "csv-parse/sync";
 import { Hono } from "hono";
 
@@ -20,10 +20,10 @@ actualsRouter.use("*", requireAuth);
 
 actualsRouter.get(
   "/",
-  zValidator("query", actualsQuerySchema, (result, c) => {
+  sValidator("query", actualsQuerySchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid query" },
+        { error: result.error[0]?.message ?? "Invalid query" },
         400,
       );
     }
@@ -136,10 +136,10 @@ actualsRouter.post("/import", async (c) => {
 
 actualsRouter.post(
   "/",
-  zValidator("json", actualInputSchema, (result, c) => {
+  sValidator("json", actualInputSchema, (result, c) => {
     if (!result.success) {
       return c.json(
-        { error: result.error.issues[0]?.message ?? "Invalid actual" },
+        { error: result.error[0]?.message ?? "Invalid actual" },
         400,
       );
     }
