@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { getCategoryName } from "@crossval/domain/categories";
+import { categories, categoryOptions, getCategoryName } from "@crossval/domain/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";
@@ -50,7 +50,6 @@ import {
   type ActualSortKey,
   useActuals,
 } from "./use-actuals";
-import { useCategories } from "./use-categories";
 import { useLocks } from "./use-locks";
 
 function currentMonth() {
@@ -72,15 +71,16 @@ function ActualTableHead({
   sort: { key: ActualSortKey; direction: ActualSortDirection };
 }) {
   const isActive = sort.key === column;
+  const isAscending = sort.direction === 1;
   const SortIcon = isActive
-    ? sort.direction === "ascending"
+    ? isAscending
       ? ArrowUp
       : ArrowDown
     : ChevronsUpDown;
 
   return (
     <TableHead
-      aria-sort={isActive ? sort.direction : "none"}
+      aria-sort={isActive ? (isAscending ? "ascending" : "descending") : "none"}
       className={cn(align === "right" && "text-right")}
     >
       <Button
@@ -103,12 +103,7 @@ export function MonthlyActualCard() {
   const [sort, setSort] = useState<{
     key: ActualSortKey;
     direction: ActualSortDirection;
-  }>({ key: "month", direction: "descending" });
-  const { categories } = useCategories();
-  const categoryOptions = categories.map((category) => ({
-    label: category.name,
-    value: category.id,
-  }));
+  }>({ key: "month", direction: -1 });
   const {
     actuals,
     total,
@@ -120,7 +115,6 @@ export function MonthlyActualCard() {
   } = useActuals(pagination.offset, pagination.limit, sort.key, sort.direction);
   const importInputRef = useRef<HTMLInputElement>(null);
   const { locks, isLoading: locksAreLoading } = useLocks();
-  const visibleActuals = actuals;
   const monthIsLocked = locks.some((lock) => lock.month === month);
 
   function handleSort(column: ActualSortKey) {
@@ -128,9 +122,7 @@ export function MonthlyActualCard() {
     setSort((current) => ({
       key: column,
       direction:
-        current.key === column && current.direction === "ascending"
-          ? "descending"
-          : "ascending",
+        current.key === column && current.direction === 1 ? -1 : 1,
     }));
   }
 
@@ -181,9 +173,13 @@ export function MonthlyActualCard() {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
             const note = String(form.get("note")).trim();
+            const category = categories.find(
+              ({ id }) => id === String(form.get("categoryId")),
+            );
+            if (!category) return;
 
             createActual({
-              categoryId: String(form.get("categoryId")),
+              categoryId: category.id,
               month: String(form.get("month")),
               amount: String(form.get("amount")),
               note: note || undefined,
@@ -302,7 +298,7 @@ export function MonthlyActualCard() {
                     sort={sort}
                   />
                   <ActualTableHead
-                    column="category"
+                    column="categoryId"
                     label="Category"
                     onSort={handleSort}
                     sort={sort}
@@ -315,7 +311,7 @@ export function MonthlyActualCard() {
                   />
                   <ActualTableHead
                     align="right"
-                    column="amount"
+                    column="amountCents"
                     label="Actual"
                     onSort={handleSort}
                     sort={sort}
@@ -323,7 +319,7 @@ export function MonthlyActualCard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleActuals.map((actual) => (
+                {actuals.map((actual) => (
                   <TableRow key={actual.id}>
                     <TableCell className="font-mono text-muted-foreground">
                       <span className="flex items-center gap-1.5">

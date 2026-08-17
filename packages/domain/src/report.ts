@@ -1,10 +1,12 @@
+import type { CategoryId } from "./categories.js";
+
 type MonthlyVariance = {
   month: string;
   varianceCents: number;
 };
 
 type ReportRow = {
-  categoryId: string;
+  categoryId: CategoryId;
   month: string;
   planCents: number;
   actualCents: number;
@@ -14,7 +16,7 @@ type ReportRow = {
 
 function buildReportCsv(
   rows: ReportRow[],
-  categoryNameFor: (categoryId: string) => string,
+  categoryNameFor: (categoryId: CategoryId) => string,
 ) {
   const escapeCsvField = (value: string) =>
     /[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;

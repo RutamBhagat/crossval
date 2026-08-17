@@ -3,78 +3,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { api } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
-
-type PeriodLock = {
-  id: string;
-  month: string;
-};
-
-async function getLocks() {
-  const response = await fetch("/api/locks", {
-    credentials: "include",
-  });
-  const data = (await response.json()) as {
-    locks?: PeriodLock[];
-    error?: string;
-  };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Locked months could not be loaded");
-  }
-
-  return data.locks ?? [];
-}
-
-async function lockMonth(month: string) {
-  const response = await fetch("/api/locks", {
-    method: "PUT",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ month }),
-  });
-  const data = (await response.json()) as { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Month could not be locked");
-  }
-}
 
 export function useLocks() {
   const queryClient = useQueryClient();
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const queryKey = ["locks", session?.user.id] as const;
+
   const locksQuery = useQuery({
     queryKey,
-    queryFn: async () => {
-      try {
-        return await getLocks();
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Locked months could not be loaded",
-        );
-        throw error;
-      }
-    },
+    queryFn: async () => (await api.api.locks.get()).data,
     enabled: Boolean(session?.user.id),
     retry: false,
   });
-  const lockMonthMutation = useMutation({
-    mutationFn: lockMonth,
+
+  const lockMonth = useMutation({
+    mutationFn: (input: Parameters<typeof api.api.locks.put>[0]) =>
+      api.api.locks.put(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
       toast.success("Month locked");
     },
-    onError: (error) => toast.error(error.message),
   });
 
   return {
-    locks: locksQuery.data ?? [],
+    locks: locksQuery.data?.locks ?? [],
     isLoading: isSessionPending || locksQuery.isLoading,
-    isLocking: lockMonthMutation.isPending,
-    lockMonth: lockMonthMutation.mutate,
+    isLocking: lockMonth.isPending,
+    lockMonth: (month: string) => lockMonth.mutate({ month }),
   };
 }

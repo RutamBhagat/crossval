@@ -38,8 +38,13 @@ import {
   Download,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
-import { getCategoryName } from "@crossval/domain/categories";
+import {
+  getCategoryName,
+  type CategoryId,
+} from "@crossval/domain/categories";
+import { api } from "@/lib/api";
 import {
   formatCurrency,
   formatSignedCurrency,
@@ -76,15 +81,16 @@ function SortableTableHead({
   sort: SortState;
 }) {
   const isActive = sort.key === column;
+  const isAscending = sort.direction === 1;
   const SortIcon = isActive
-    ? sort.direction === "ascending"
+    ? isAscending
       ? ArrowUp
       : ArrowDown
     : ChevronsUpDown;
 
   return (
     <TableHead
-      aria-sort={isActive ? sort.direction : "none"}
+      aria-sort={isActive ? (isAscending ? "ascending" : "descending") : "none"}
       className={cn(align === "right" && "text-right")}
     >
       <Button
@@ -109,10 +115,10 @@ export function ReportCard() {
   const [pagination, setPagination] = useState({ offset: 0, limit: 10 });
   const [sort, setSort] = useState<SortState>({
     key: "month",
-    direction: "descending",
+    direction: -1,
   });
   const [selectedRow, setSelectedRow] = useState<{
-    categoryId: string;
+    categoryId: CategoryId;
     month: string;
   }>();
   const { rows, monthlyVariance, total, isLoading } = useReport(
@@ -140,23 +146,31 @@ export function ReportCard() {
     setSort((current) => ({
       key: column,
       direction:
-        current.key === column && current.direction === "ascending"
-          ? "descending"
-          : "ascending",
+        current.key === column && current.direction === 1 ? -1 : 1,
     }));
   }
 
-  function exportReport() {
-    const query = new URLSearchParams({
-      start: startMonth,
-      end: endMonth,
-      sort: sort.key,
-      direction: sort.direction,
-    });
+  async function exportReport() {
+    try {
+      const { data } = await api.api.reports.export.get({
+        query: {
+          start: startMonth,
+          end: endMonth,
+          sort: sort.key,
+          direction: sort.direction,
+        },
+      });
+      if (!data) return;
 
-    window.location.assign(
-      `/api/reports/export?${query}`,
-    );
+      const url = URL.createObjectURL(new Blob([data], { type: "text/csv" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `variance-report-${startMonth}-to-${endMonth}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Report could not be exported");
+    }
   }
 
   return (

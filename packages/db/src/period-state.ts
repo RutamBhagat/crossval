@@ -33,11 +33,11 @@ async function runIfPeriodsOpen<T>(
           { userId, month },
           { $inc: { revision: 1 } },
           {
-                      returnDocument: "after",
-                      runValidators: true,
-                      session,
-                      upsert: true,
-                    },
+            returnDocument: "after",
+            runValidators: true,
+            session,
+            upsert: true,
+          },
         ).lean();
 
         if (state?.locked !== false) {

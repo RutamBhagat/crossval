@@ -7,7 +7,5 @@ export default defineConfig({
   clean: true,
   deps: {
     alwaysBundle: [/@crossval\/.*/],
-    neverBundle: ["@opentelemetry/api"],
-    onlyBundle: false,
   },
 });

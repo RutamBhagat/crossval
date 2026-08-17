@@ -3,84 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { api } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 
-type Actual = {
-  id: string;
-  categoryId: string;
-  month: string;
-  amountCents: number;
-  note?: string;
-};
+type ActualsQuery = Parameters<typeof api.api.actuals.get>[0]["query"];
 
-export type ActualSortKey = "month" | "category" | "note" | "amount";
-export type ActualSortDirection = "ascending" | "descending";
-
-type ActualInput = {
-  categoryId: string;
-  month: string;
-  amount: string;
-  note?: string;
-};
-
-async function getActuals(
-  offset: number,
-  limit: number,
-  sort: ActualSortKey,
-  direction: ActualSortDirection,
-) {
-  const query = new URLSearchParams({
-    offset: String(offset),
-    limit: String(limit),
-    sort,
-    direction,
-  });
-  const response = await fetch(`/api/actuals?${query}`, {
-    credentials: "include",
-  });
-  const data = (await response.json()) as {
-    actuals?: Actual[];
-    total?: number;
-    error?: string;
-  };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Actuals could not be loaded");
-  }
-
-  return { actuals: data.actuals ?? [], total: data.total ?? 0 };
-}
-
-async function createActual(input: ActualInput) {
-  const response = await fetch("/api/actuals", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  const data = (await response.json()) as { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Actual could not be logged");
-  }
-}
-
-async function importActuals(file: File) {
-  const body = new FormData();
-  body.set("file", file);
-  const response = await fetch("/api/actuals/import", {
-    method: "POST",
-    credentials: "include",
-    body,
-  });
-  const data = (await response.json()) as { imported?: number; error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Actuals could not be imported");
-  }
-
-  return data.imported ?? 0;
-}
+export type ActualSortKey = ActualsQuery["sort"];
+export type ActualSortDirection = ActualsQuery["direction"];
 
 export function useActuals(
   offset: number,
@@ -92,25 +21,18 @@ export function useActuals(
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const queryKey = ["actuals", session?.user.id] as const;
+
   const actualsQuery = useQuery({
     queryKey: [...queryKey, offset, limit, sort, direction],
-    queryFn: async () => {
-      try {
-        return await getActuals(offset, limit, sort, direction);
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Actuals could not be loaded",
-        );
-        throw error;
-      }
-    },
+    queryFn: async () =>
+      (await api.api.actuals.get({ query: { offset, limit, sort, direction } })).data,
     enabled: Boolean(session?.user.id),
     retry: false,
   });
-  const createActualMutation = useMutation({
-    mutationFn: createActual,
+
+  const createActual = useMutation({
+    mutationFn: (input: Parameters<typeof api.api.actuals.post>[0]) =>
+      api.api.actuals.post(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
       void queryClient.invalidateQueries({
@@ -118,10 +40,11 @@ export function useActuals(
       });
       toast.success("Actual spend logged");
     },
-    onError: (error) => toast.error(error.message),
   });
-  const importActualsMutation = useMutation({
-    mutationFn: importActuals,
+
+  const importActuals = useMutation({
+    mutationFn: async (file: File) =>
+      (await api.api.actuals.import.post({ file })).data?.imported ?? 0,
     onSuccess: (count) => {
       void queryClient.invalidateQueries({ queryKey });
       void queryClient.invalidateQueries({
@@ -129,16 +52,15 @@ export function useActuals(
       });
       toast.success(`${count} actual ${count === 1 ? "row" : "rows"} imported`);
     },
-    onError: (error) => toast.error(error.message),
   });
 
   return {
     actuals: actualsQuery.data?.actuals ?? [],
     total: actualsQuery.data?.total ?? 0,
     isLoading: isSessionPending || actualsQuery.isLoading,
-    isSaving: createActualMutation.isPending,
-    isImporting: importActualsMutation.isPending,
-    createActual: createActualMutation.mutate,
-    importActuals: importActualsMutation.mutateAsync,
+    isSaving: createActual.isPending,
+    isImporting: importActuals.isPending,
+    createActual: createActual.mutate,
+    importActuals: importActuals.mutateAsync,
   };
 }

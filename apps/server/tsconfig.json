@@ -1,11 +1,10 @@
 {
   "extends": "@crossval/config/tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
     "outDir": "dist",
-    "noUncheckedIndexedAccess": false,
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "*.mts"]
+  }
 }

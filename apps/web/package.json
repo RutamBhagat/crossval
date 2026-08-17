@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@crossval/domain": "workspace:*",
+    "@crossval/server": "workspace:*",
     "@crossval/ui": "workspace:*",
+    "@elysiajs/eden": "^1.4.9",
     "@swc/helpers": "^0.5.23",
     "@tanstack/react-query": "^5.101.4",
     "babel-plugin-react-compiler": "^1.0.0",
@@ -28,6 +30,7 @@
     "@types/node": "^20.19.43",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "elysia": "1.4.29",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }

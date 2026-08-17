@@ -1,37 +1,39 @@
 {
-  "name": "server",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@crossval/server",
   "type": "module",
   "main": "dist/server.mjs",
+  "exports": {
+    "./app": {
+      "types": "./src/app.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsdown",
-    "check-types": "tsc --noEmit",
-    "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.mts",
-    "test:watch": "vitest",
+    "check-types": "tsc -b",
+    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/server.ts --outfile server",
     "start": "node dist/server.mjs"
   },
   "dependencies": {
+    "@better-auth/core": "1.6.25",
     "@crossval/auth": "workspace:*",
     "@crossval/db": "workspace:*",
     "@crossval/domain": "workspace:*",
     "@crossval/env": "workspace:*",
-    "@hono/node-server": "^1.19.11",
-    "@hono/standard-validator": "^0.4.0",
-    "arktype": "catalog:",
+    "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/node": "^1.4.5",
+    "@elysiajs/openapi": "^1.4.15",
+    "@opentelemetry/api": "^1.9.1",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.2",
     "csv-parse": "^7.0.2",
-    "hono": "^4.12.32",
-    "ioredis": "^6.0.0",
-    "rate-limiter-flexible": "^11.2.0"
+    "elysia": "1.4.29"
   },
   "devDependencies": {
     "@crossval/config": "workspace:*",
     "@types/node": "^22.20.1",
     "tsdown": "^0.22.14",
-    "tsx": "^4.21.0",
-    "typescript": "catalog:",
-    "vitest": "^4.1.10"
+    "tsx": "^4.23.1",
+    "typescript": "catalog:"
   }
 }

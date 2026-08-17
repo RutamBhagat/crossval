@@ -1,15 +1,17 @@
 import { createEnv } from "@t3-oss/env-nextjs";
-import { type } from "arktype";
+import * as v from "valibot";
 
-const ApiOriginToken = type("string").narrow(
-  (value, context) =>
-    /^[0-9a-f]{64}$/.test(value) ||
-    context.mustBe("a 64-character lowercase hexadecimal string"),
+const ApiOriginToken = v.pipe(
+  v.string(),
+  v.regex(
+    /^[0-9a-f]{64}$/,
+    "Expected a 64-character lowercase hexadecimal string",
+  ),
 );
-
-const ApiUpstreamUrl = type("string | undefined")
-  .pipe((value) => value ?? "http://localhost:8000/crossval")
-  .to("string.url");
+const ApiUpstreamUrl = v.optional(
+  v.pipe(v.string(), v.url()),
+  "http://localhost:8000",
+);
 
 export const env = createEnv({
   server: {

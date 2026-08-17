@@ -23,13 +23,16 @@ import {
   TableRow,
 } from "@crossval/ui/components/table";
 
-import { getCategoryName } from "@crossval/domain/categories";
+import {
+  getCategoryName,
+  type CategoryId,
+} from "@crossval/domain/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { useReportActuals } from "./use-report-actuals";
 
 type SelectedReportRow = {
-  categoryId: string;
+  categoryId: CategoryId;
   month: string;
 };
 

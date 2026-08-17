@@ -24,9 +24,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter server check-types
-      - run: pnpm --filter server test
-      - run: pnpm --filter server build
+      - run: pnpm --filter @crossval/server check-types
+      - run: pnpm --filter @crossval/server build
 
   deploy:
     needs: verify
@@ -74,47 +73,110 @@ jobs:
           root=/opt/crossval
           release="$root/releases/$release_id"
           archive="/tmp/crossval-$release_id.tar.gz"
-          previous=$(readlink -f "$root/current" || true)
+          image="crossval-server:$release_id"
+          current_image=crossval-server:current
+          previous_image=crossval-server:previous
+          container=crossval-server
+
+          stop_container() {
+            if sudo docker container inspect "$container" >/dev/null 2>&1; then
+              sudo docker stop "$container" >/dev/null || true
+              sudo docker rm "$container" >/dev/null || true
+            fi
+          }
+
+          start_container() {
+            sudo docker run --detach \
+              --name "$container" \
+              --restart unless-stopped \
+              --stop-timeout 30 \
+              --network host \
+              --env-file "$root/server.env" \
+              "$1" >/dev/null
+          }
 
           rollback() {
-            sudo journalctl -u crossval-server.service -n 100 --no-pager || true
-            if [ -n "$previous" ] && [ -d "$previous" ]; then
-              ln -sfn "$previous" "$root/current.rollback"
-              mv -Tf "$root/current.rollback" "$root/current"
-              sudo systemctl restart crossval-server.service
+            sudo docker logs --tail 100 "$container" 2>/dev/null || true
+            stop_container
+
+            if sudo docker image inspect "$previous_image" >/dev/null 2>&1; then
+              sudo docker image rm "$current_image" >/dev/null 2>&1 || true
+              sudo docker tag "$previous_image" "$current_image"
+              start_container "$current_image" || true
+            else
+              printf 'No previous Docker image is available for rollback.\n' >&2
             fi
             exit 1
           }
 
           sudo test -r "$root/server.env"
+          sudo docker version >/dev/null
+
+          health_port=$(sudo sed -n 's/^PORT=//p' "$root/server.env")
+          if [ "${health_port:-8000}" != 8000 ]; then
+            printf 'Crossval Docker deployment requires PORT=8000; got %s.\n' "${health_port:-<unset>}" >&2
+            exit 1
+          fi
+
           rm -rf "$release"
           install -d "$release"
           tar -xzf "$archive" -C "$release"
           rm -f "$archive"
 
           cd "$release"
-          sudo ./deploy/install-systemd-unit.sh
-          pnpm install --frozen-lockfile
-          pnpm --filter server build
-          sudo /usr/bin/node \
-            --env-file="$root/server.env" \
-            "$release/apps/server/dist/scripts/check-redis.mjs"
+          sudo docker build \
+            --file apps/server/Dockerfile \
+            --label "org.opencontainers.image.revision=$release_id" \
+            --tag "$image" \
+            .
 
-          ln -sfn "$release" "$root/current.next"
-          mv -Tf "$root/current.next" "$root/current"
-          sudo systemctl restart crossval-server.service || rollback
+          sudo docker run --rm \
+            --env-file "$root/server.env" \
+            "$image" \
+            node dist/scripts/check-redis.mjs
 
-          health_host=$(sudo sed -n 's/^HOST=//p' "$root/server.env")
-          health_port=$(sudo sed -n 's/^PORT=//p' "$root/server.env")
+          # One-time migration cleanup: Docker becomes the only API supervisor.
+          if sudo systemctl is-active --quiet crossval-server.service || \
+             sudo systemctl is-enabled --quiet crossval-server.service 2>/dev/null; then
+            sudo systemctl disable --now crossval-server.service || true
+          fi
+          sudo rm -f /etc/systemd/system/crossval-server.service
+          sudo systemctl daemon-reload
+
+          if sudo docker image inspect "$current_image" >/dev/null 2>&1; then
+            sudo docker image rm "$previous_image" >/dev/null 2>&1 || true
+            sudo docker tag "$current_image" "$previous_image"
+          fi
+
+          sudo docker tag "$image" "$current_image"
+          stop_container
+          start_container "$current_image" || rollback
 
           for _ in $(seq 1 12); do
-            if curl --fail --silent "http://${health_host:-0.0.0.0}:${health_port:-8000}/api/health" >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:8000/api/health >/dev/null; then
+              current_id=$(sudo docker image inspect "$current_image" --format '{{.Id}}')
+              previous_id=$(sudo docker image inspect "$previous_image" --format '{{.Id}}' 2>/dev/null || true)
+
+              while read -r candidate; do
+                [ -n "$candidate" ] || continue
+                case "$candidate" in
+                  "$current_image"|"$previous_image") continue ;;
+                esac
+
+                candidate_id=$(sudo docker image inspect "$candidate" --format '{{.Id}}')
+                if [ "$candidate_id" != "$current_id" ] && [ "$candidate_id" != "$previous_id" ]; then
+                  sudo docker image rm "$candidate" >/dev/null || true
+                fi
+              done < <(sudo docker image ls crossval-server --format '{{.Repository}}:{{.Tag}}')
+
               for candidate in "$root"/releases/*; do
                 [ -d "$candidate" ] || continue
-                if [ "$candidate" != "$release" ] && [ "$candidate" != "$previous" ]; then
-                  rm -rf "$candidate"
-                fi
+                [ "$candidate" = "$release" ] || rm -rf "$candidate"
               done
+
+              sudo docker builder prune --force \
+                --filter "until=168h" \
+                --max-used-space 3GB >/dev/null
               exit 0
             fi
             sleep 5

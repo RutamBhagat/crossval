@@ -1,8 +1,16 @@
+import { categoryIds, type CategoryId } from "@crossval/domain/categories";
 import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
-const planSchema = new Schema(
+interface PlanRecord {
+  userId: string;
+  categoryId: CategoryId;
+  month: string;
+  amountCents: number;
+}
+
+const planSchema = new Schema<PlanRecord>(
   {
     userId: {
       type: String,
@@ -12,6 +20,7 @@ const planSchema = new Schema(
       type: String,
       required: true,
       trim: true,
+      enum: categoryIds,
     },
     month: {
       type: String,
@@ -34,6 +43,6 @@ const planSchema = new Schema(
 planSchema.index({ userId: 1, categoryId: 1, month: 1 }, { unique: true });
 planSchema.index({ userId: 1, month: 1, categoryId: 1 });
 
-const Plan = mongoose.models.Plan ?? mongoose.model("Plan", planSchema);
+const Plan =  mongoose.model<PlanRecord>("Plan", planSchema);
 
 export { Plan };

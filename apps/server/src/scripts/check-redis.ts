@@ -1,31 +1,19 @@
-import { env } from "@crossval/env/server";
-import Redis from "ioredis";
-import { RateLimiterRedis } from "rate-limiter-flexible";
+import { createRateLimit, redis } from "../rate-limit.js";
 
-const redis = new Redis(env.REDIS_URL, {
-  lazyConnect: true,
-  enableOfflineQueue: false,
-  connectTimeout: 3_000,
-  commandTimeout: 1_000,
-  maxRetriesPerRequest: 1,
-});
-
-try {
-  await redis.connect();
-
-  const limiter = new RateLimiterRedis({
-    storeClient: redis,
-    keyPrefix: "crossval:deploy-check",
-    points: 1,
-    duration: 10,
-    rejectIfRedisNotReady: true,
-  });
-  const key = `${process.pid}:${Date.now()}`;
-
-  await limiter.consume(key);
-  await limiter.delete(key);
-
-  console.log("Redis readiness check passed");
-} finally {
-  redis.disconnect();
+const ping = await redis.ping();
+if (ping !== "PONG") {
+  throw new Error(`Upstash Redis readiness check failed: ${ping}`);
 }
+
+const limiter = createRateLimit("crossval:deploy-check");
+const identifier = `deploy:${process.pid}:${Date.now()}`;
+const result = await limiter.limit(identifier);
+
+if (!result.success || result.reason === "timeout") {
+  throw new Error(
+    `Upstash rate-limit readiness check failed${result.reason ? `: ${result.reason}` : ""}`,
+  );
+}
+
+await limiter.resetUsedTokens(identifier);
+console.log("Upstash Redis readiness check passed");

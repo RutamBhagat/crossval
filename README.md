@@ -7,7 +7,7 @@ Crossval is a web application for monthly spending plans, actual spending, and v
 Install these tools before you start:
 
 - [Node.js](https://nodejs.org/) 20.9.0 or later
-- [pnpm](https://pnpm.io/) 11.12.0
+- [pnpm](https://pnpm.io/) 11.22.0
 - [Docker](https://www.docker.com/) with Docker Compose
 
 ## Demo Video
@@ -22,55 +22,49 @@ Install these tools before you start:
 
 ### Backend
 
-[92.5.75.7/crossval](https://92.5.75.7/crossval)
+[OpenAPI Specification](https://crossval-web-five.vercel.app/api/openapi)
 
 Production stack:
 
 - Vercel: Next.js frontend
-- Oracle Cloud Infrastructure (OCI): Hono API on a 2-OCPU, 12 GB RAM Arm compute instance
+- Oracle Cloud Infrastructure (OCI): Dockerized Elysia API on a 2-OCPU, 12 GB RAM Arm compute instance
 - MongoDB Atlas: production database
-- Upstash Redis: shared rate-limit counters
+- Upstash Redis: distributed per-IP and per-user rate-limit counters
 
 ### Deployment architecture
 
-The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API. The `API_UPSTREAM_URL` environment variable sets this upstream URL.
+The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API configured by `API_UPSTREAM_URL`.
 
-In production, Next.js Proxy validates the single client IP that Vercel supplies. It fails closed if the value is absent or is not an IPv4 or IPv6 address. It overwrites the internal client-IP and origin-token request headers before the rewrite. Local Proxy attaches the configured token, but Hono does not validate it because local Caddy is absent. Thus, local development has configuration parity but not security parity.
+For `/api/*`, the Next.js proxy validates Vercel's `X-Forwarded-For` value as a single IP address. It forwards that address in `X-Crossval-Client-IP` and adds the server-only `X-Crossval-Origin-Token`.
 
-Public API requests first reach Caddy on the `e2-1` OCI VM. Caddy terminates TLS and verifies the server-only origin token. For accepted requests, it overwrites `X-Forwarded-For` with the canonical client IP. It then removes the internal headers and the `/crossval` path prefix.
-
-Caddy then proxies the request to `a1` at `10.0.0.201:8000` through the OCI private subnet. The 2-OCPU, 12 GB RAM Arm instance runs the Hono API. The API binds to its private address, not the public interface. MongoDB Atlas supports the transactions that enforce month locks.
+Requests then reach Caddy on the `e2-1` OCI VM. Caddy validates the origin token, replaces `X-Forwarded-For` with the validated client IP, removes internal headers, strips the `/crossval` prefix, and proxies to the Elysia container at `10.0.0.201:8000` on `a1`. The container uses host networking so Elysia sees Caddy's private IP as the TCP peer. MongoDB Atlas provides the transactions used to enforce month locks.
 
 ```mermaid
 flowchart TD
     U[Browser] --> V[Vercel frontend]
     V -->|HTTPS 443<br/>canonical IP + origin token| C[e2-1: Caddy]
-    C -->|OCI private subnet<br/>TCP 8000| A[a1: Hono API]
+    C -->|OCI private subnet<br/>TCP 8000<br/>sanitized X-Forwarded-For| A[a1: Docker / Elysia API]
     A -->|TLS, outbound| M[MongoDB Atlas]
-    A -->|TLS, outbound| R[Upstash Redis]
+    A -->|HTTPS, outbound| R[Upstash Redis]
 ```
 
 ### API runtime controls
 
-The API uses ArkType for request and environment validation. This keeps validation CPU and memory use low on the constrained Arm instance.
+Elysia TypeBox schemas validate API request bodies, query parameters, and response shapes. Valibot validates environment variables. The API publishes interactive Scalar documentation at `/openapi` and the OpenAPI specification at `/openapi/json`.
 
-Two independent Upstash Redis-backed rate limiters protect the API. The IP limiter applies to all API routes except `/api/health`. It sets a coarse ceiling of 3,000 requests per remote network address in each 60-second period. After authentication, a separate user limiter allows 300 requests per user ID in each 60-second period. A request to an authenticated route must satisfy both limits.
+The frontend uses Eden Treaty instead of hand-written `fetch` calls. It derives request and response types from the exported Elysia `App` type, so the client stays in sync with the server routes without maintaining a second set of Zod schemas.
 
-Each limiter blocks excess requests for 60 seconds and returns HTTP status `429`. A rejected response identifies the limit as `ip` or `user` in its JSON `policy` field. It includes `RateLimit-Limit`, `RateLimit-Remaining`, and `Retry-After` headers. Successful responses do not report one policy as authoritative.
+Authenticated application routes use two Upstash Redis limits: 900 requests per minute per IPv4 address or IPv6 `/64`, then 300 requests per minute per authenticated user. The IP limit runs before session lookup. Rejected requests return HTTP status `429` with a `Retry-After` header and identify the `ip` or `user` policy.
 
-Better Auth independently rate-limits authentication endpoints by client IP. It uses a global policy and stricter policies for sensitive endpoints. Its counters use process memory by default. The IP and user thresholds are initial operating values and require validation with load tests.
+Better Auth separately applies its own Redis-backed limit of 100 requests per 60 seconds to `/api/auth/*`. It trusts Caddy at `10.0.0.21` by default when resolving the forwarded client IP and explicitly groups IPv6 clients by `/64`. Sessions and verification records remain in MongoDB; Redis secondary storage is used for Better Auth rate-limit counters.
 
-Redis stores the IP and user counters under separate key prefixes with key expiry. Redis commands have a one-second timeout. Redis connections have a three-second timeout. Each Redis limiter has an independent in-memory insurance limiter that maintains rate-limit availability during Redis failures. Insurance counters are local to one server process. The limiter does not copy them to Redis after recovery.
+The application IP limiter accepts only the single sanitized `X-Forwarded-For` value produced by the deployment path. Vercel provides the address, the Next.js proxy validates it and adds `API_ORIGIN_TOKEN`, and Caddy rewrites `X-Forwarded-For` before forwarding the request to Elysia. Invalid or missing values share one `unknown` bucket instead of becoming attacker-controlled rate-limit keys.
 
-The API trusts `X-Forwarded-For` only when the direct socket peer matches `TRUSTED_PROXY_IP`. This setting defaults to Caddy at `10.0.0.21`. Requests from other peers use their direct socket address and ignore the forwarded header. Better Auth uses the same trusted proxy address when it resolves the forwarded IP chain. UFW keeps the API origin private and permits application traffic only from Caddy.
-
-`API_ORIGIN_TOKEN` must be a 64-character lowercase hexadecimal secret. It must have the same value in the Vercel project and the Caddy service environment. This token is a security credential for client-IP authenticity. Rotate it if it leaks, never log it intentionally, and do not expose it through a `NEXT_PUBLIC_` variable.
-
-Configure Caddy manually on `e2-1`. The VM serves other applications, so Crossval CI does not install or modify its Caddy configuration. Use `deploy/Caddyfile.crossval` as the version-controlled reference configuration only. Its parent site must use a `respond 404` fallback instead of a catch-all `handle`. The `/crossval/*` handler must verify the exact origin token and its hexadecimal format. It must overwrite `X-Forwarded-For` with `X-Crossval-Client-IP`, remove all `X-Crossval-*` headers, and reject unauthorized requests with HTTP status `403`.
+Configure Caddy manually on `e2-1` because the VM serves other applications. Crossval CI does not install or modify its Caddy configuration. `deploy/Caddyfile.crossval` is the version-controlled reference, and `deploy/caddy.env.example` documents the server-only token. Set the same `API_ORIGIN_TOKEN` in Caddy and Vercel.
 
 ### Graceful shutdown
 
-`SIGINT` or `SIGTERM` starts a graceful shutdown. The API stops new connections and closes idle connections. It waits for active requests. It then closes the MongoDB and Redis connections. A second signal or a 10-second timeout closes all remaining connections and forces the process to exit.
+Docker manages the API container with the `unless-stopped` restart policy. When the container stops, Docker sends `SIGTERM` to the Node.js process and allows up to 30 seconds for shutdown. The process stops the Elysia server, closes the MongoDB connection, and exits.
 
 ### Network security
 
@@ -99,32 +93,41 @@ The `a1` VM still has a reserved public IP because releasing it could change the
 
 ### Secure CI/CD path
 
-A push to `main` starts `.github/workflows/deploy-oci.yml`. The `verify` job checks server types, runs tests, and builds the server before deployment.
+A push to `main` starts `.github/workflows/deploy-oci.yml`. The `verify` job type-checks and builds the API before deployment.
 
-The `deploy` job uses GitHub Actions workload identity federation to join the tailnet as an ephemeral `tag:ci` node. The workflow uses an OAuth client ID and audience, so it does not store a reusable Tailscale auth key. It waits until it can reach the Tailscale host `a1`.
+The `deploy` job joins the tailnet as an ephemeral `tag:ci` node by using GitHub Actions workload identity federation. The workflow sends a source archive to `a1` with SCP over Tailscale and runs deployment commands through SSH. Public SSH access and a container registry are not required.
 
-The runner then uses SSH and SCP through Tailscale. It does not require public SSH access or the Caddy request path.
+`a1` must have Docker Engine installed and configured to start at boot. The workflow checks that Docker is available but does not install or configure the daemon.
 
 ```mermaid
 flowchart TD
-    P[Push to main] --> Q[Verify types, tests, and build]
+    P[Push to main] --> Q[Verify types and build]
     Q --> G[GitHub-hosted deploy runner]
     G -->|Workload identity federation| T[Ephemeral tag:ci tailnet node]
     T -->|Tailscale SSH and SCP| A[a1]
-    A --> R[Install and build versioned release]
-    R --> S[Switch current symlink and restart]
+    A --> D[Build Docker image from source]
+    D --> R[Run Redis preflight in new image]
+    R --> S[Replace running container]
     S --> H[Local health check]
-    H -->|Pass| K[Keep new release]
-    H -->|Fail| B[Restore prior release]
+    H -->|Pass| K[Keep current and previous images]
+    H -->|Fail| B[Start previous image]
 ```
 
-The workflow uploads a source archive and installs a versioned release under `/opt/crossval/releases`. The API uses `DATABASE_URL` for application data and `REDIS_URL` for shared rate-limit counters.
+The workflow extracts each source archive under `/opt/crossval/releases/<commit-sha>` and builds `crossval-server:<commit-sha>` with the Docker daemon on `a1`. Building on the Arm host produces the target architecture directly and avoids cross-platform image builds.
 
-The workflow runs a temporary Redis rate-limit operation before it activates a release. This check verifies the connection, write access, Lua execution, and cleanup. A failed Redis check stops the deployment. The workflow then switches the `current` symlink and restarts `crossval-server.service`. It checks `/api/health` on the VM. If the health check fails, it restores the prior release and restarts the service.
+Before activation, the workflow runs the Upstash Redis preflight inside the new image with `/opt/crossval/server.env`. It tags the existing `crossval-server:current` image as `crossval-server:previous`, tags the new image as `crossval-server:current`, and replaces the named `crossval-server` container.
 
-The public request path and private deployment path are independent. Caddy can continue to serve the active release while GitHub Actions uploads and builds the next release through Tailscale.
+The container uses `--restart unless-stopped`, so Docker restarts it after process failures and Docker daemon or host restarts. It also uses `--stop-timeout 30` for graceful shutdown and `--network host` so Elysia sees Caddy's private IP as the TCP peer.
 
-The Docker Compose MongoDB and Redis configuration is only for local development.
+Host networking is intentional. Better Auth trusts the configured `TRUSTED_PROXY_IP`, which defaults to Caddy at `10.0.0.21`. Docker bridge networking could replace that TCP peer address with a bridge or gateway address before the request reaches Elysia.
+
+After replacement, the workflow checks `/api/health` on port `8000`. If the check fails and a previous Docker image exists, it removes the failed container and starts `crossval-server:previous`. The first Docker deployment has no automatic fallback to the former non-container service.
+
+The first Docker deployment also disables and removes the old `crossval-server.service` unit so Docker becomes the only process supervisor for the API. The repository no longer installs or maintains a systemd unit for the container.
+
+After a successful deployment, the workflow removes stale source releases and old `crossval-server:<commit-sha>` image tags while retaining the current and previous image revisions. It also prunes build cache that has not been used for seven days and limits retained build cache to 3 GB. The public request path and private deployment path remain independent, so Caddy can continue serving the active container while GitHub Actions uploads and builds the next revision through Tailscale.
+
+The Docker Compose MongoDB configuration is only for local development.
 
 ## Local setup
 
@@ -160,8 +163,8 @@ The Docker Compose MongoDB and Redis configuration is only for local development
    http://localhost:3000/api/auth/callback/google
    ```
 
-7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `apps/server/.env`.
-8. Start MongoDB and Redis:
+7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN` in `apps/server/.env`. In `apps/web/.env`, keep the development `API_ORIGIN_TOKEN` from the example file or replace it with another 64-character lowercase hexadecimal value.
+8. Start MongoDB:
 
    ```bash
    pnpm db:start
@@ -173,26 +176,21 @@ The Docker Compose MongoDB and Redis configuration is only for local development
    pnpm dev
    ```
 
-10. Open [http://localhost:3000](http://localhost:3000). The API listens on [http://localhost:8000](http://localhost:8000).
+10. Open [http://localhost:3000](http://localhost:3000). The Elysia API listens on [http://localhost:8000](http://localhost:8000).
 
-The local MongoDB database and Redis service require Docker. MongoDB runs as a single-node replica set because lock-safe writes use MongoDB transactions. The example configuration uses these connections:
+Local MongoDB runs as a single-node replica set because month locking depends on MongoDB transactions. The per-user rate limiter uses the Upstash REST credentials from `apps/server/.env`.
 
-```text
-mongodb://localhost:27017/crossval?replicaSet=rs0
-redis://localhost:6379
-```
+For production, set `DATABASE_URL` to the MongoDB Atlas connection string and provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. Set the same randomly generated `API_ORIGIN_TOKEN` in Vercel and the Caddy service environment. `TRUSTED_PROXY_IP` defaults to the `e2-1` private address, `10.0.0.21`.
 
-For production, set `DATABASE_URL` to the MongoDB Atlas connection string and `REDIS_URL` to the Upstash `rediss://` connection string.
-
-To run the MongoDB and Redis integration tests, keep both services running and use:
+To run the MongoDB integration tests, keep MongoDB running and use:
 
 ```bash
 pnpm test:integration
 ```
 
-The tests use the `crossval_integration` database and `redis://localhost:6379` by default. Set `INTEGRATION_DATABASE_URL` or `INTEGRATION_REDIS_URL` to use different test services.
+The tests use the `crossval_integration` database by default. Set `INTEGRATION_DATABASE_URL` to use a different test database.
 
-To stop MongoDB and Redis, run:
+To stop MongoDB, run:
 
 ```bash
 pnpm db:stop
@@ -251,9 +249,9 @@ Local credentials would require email verification, password reset, rate limits,
 
 ### Rate-limit storage
 
-Upstash Redis stores shared, disposable counters across API processes and preserves rate-limit behavior during application restarts. Counter keys expire automatically. The API connects through TLS with one persistent Redis connection per process.
+Upstash Redis stores per-IP and per-user counters shared by API processes, so rate limits survive application restarts. Counter keys expire automatically. IPv6 keys represent `/64` networks rather than individual interface addresses.
 
-This adds a network request to each rate-limit check and makes Upstash an external runtime dependency. An in-memory insurance limiter keeps the API available during Redis failures. The limiter does not synchronize its process-local counters after recovery.
+A successful authenticated application request makes two Upstash REST rate-limit checks: the IP policy first and the user policy second. There is no process-local fallback or persistent Redis connection.
 
 ### Product and data model
 
@@ -268,26 +266,6 @@ This adds a network request to each rate-limit check and makes Upstash an extern
 - CSV import accepts one file at a time. It has no preview. It rejects the full file if one row is invalid.
 
 - Users cannot remove locks. An administrator or controlled lock removal process is necessary for corrections.
-
-## Production improvements
-
-Make these changes before production use:
-
-- Add category management, CSV previews, and import history.
-
-- Add an audited lock removal process with clear user permissions.
-
-- Add route-specific rate limits for authentication and general API traffic.
-
-- Review OAuth, session, cookie, and token-revocation controls.
-
-- Add centralized request logs, error monitoring, and external health monitoring.
-
-- Configure and verify MongoDB Atlas backups. Test database recovery.
-
-- Add more integration and browser tests for authentication and report workflows.
-
-- Complete an accessibility and security review.
 
 ## Query approach at larger scale
 
@@ -309,7 +287,7 @@ Run the server unit tests:
 pnpm test
 ```
 
-Run the integration tests while the local MongoDB and Redis services are active:
+Run the integration tests while the local MongoDB service is active:
 
 ```bash
 pnpm test:integration
@@ -321,7 +299,7 @@ Check all workspace types:
 pnpm check-types
 ```
 
-Build the Next.js frontend and Hono server:
+Build the Next.js frontend and Elysia API:
 
 ```bash
 pnpm build

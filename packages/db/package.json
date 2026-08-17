@@ -17,6 +17,7 @@
     "test:integration": "vitest run --config vitest.integration.config.mts"
   },
   "dependencies": {
+    "@crossval/domain": "workspace:*",
     "@crossval/env": "workspace:*",
     "dotenv": "catalog:",
     "mongoose": "^9.8.1"

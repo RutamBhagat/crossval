@@ -1,10 +1,8 @@
 "use client";
 
-import { Badge } from "@crossval/ui/components/badge";
 import { Button } from "@crossval/ui/components/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -34,14 +32,13 @@ import { cn } from "@crossval/ui/lib/utils";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { getCategoryName } from "@crossval/domain/categories";
+import { categories, categoryOptions, getCategoryName } from "@crossval/domain/categories";
 import { formatCurrency } from "@/lib/formatters";
 
 import { MonthLockStatus } from "./month-lock-status";
 import { MonthPicker } from "./month-picker";
 import { PaginationControls } from "./pagination-controls";
 import { useLocks } from "./use-locks";
-import { useCategories } from "./use-categories";
 import {
   type PlanSortDirection,
   type PlanSortKey,
@@ -67,15 +64,16 @@ function PlanTableHead({
   sort: { key: PlanSortKey; direction: PlanSortDirection };
 }) {
   const isActive = sort.key === column;
+  const isAscending = sort.direction === 1;
   const SortIcon = isActive
-    ? sort.direction === "ascending"
+    ? isAscending
       ? ArrowUp
       : ArrowDown
     : ChevronsUpDown;
 
   return (
     <TableHead
-      aria-sort={isActive ? sort.direction : "none"}
+      aria-sort={isActive ? (isAscending ? "ascending" : "descending") : "none"}
       className={cn(align === "right" && "text-right")}
     >
       <Button
@@ -98,12 +96,7 @@ export function MonthlyPlanCard() {
   const [sort, setSort] = useState<{
     key: PlanSortKey;
     direction: PlanSortDirection;
-  }>({ key: "month", direction: "descending" });
-  const { categories } = useCategories();
-  const categoryOptions = categories.map((category) => ({
-    label: category.name,
-    value: category.id,
-  }));
+  }>({ key: "month", direction: -1 });
   const { plans, total, isLoading, isSaving, savePlan } = usePlans(
     pagination.offset,
     pagination.limit,
@@ -112,16 +105,13 @@ export function MonthlyPlanCard() {
   );
   const { locks, isLoading: locksAreLoading } = useLocks();
   const monthIsLocked = locks.some((lock) => lock.month === month);
-  const visiblePlans = plans;
 
   function handleSort(column: PlanSortKey) {
     setPagination((current) => ({ ...current, offset: 0 }));
     setSort((current) => ({
       key: column,
       direction:
-        current.key === column && current.direction === "ascending"
-          ? "descending"
-          : "ascending",
+        current.key === column && current.direction === 1 ? -1 : 1,
     }));
   }
 
@@ -138,11 +128,15 @@ export function MonthlyPlanCard() {
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
+            const category = categories.find(
+              ({ id }) => id === String(form.get("categoryId")),
+            );
+            if (!category) return;
 
             void savePlan({
-              categoryId: String(form.get("categoryId")),
+              categoryId: category.id,
               month: String(form.get("month")),
-              amount: String(form.get("amount")),
+              amount: Number(form.get("amount")),
             });
           }}
         >
@@ -162,12 +156,12 @@ export function MonthlyPlanCard() {
                 <Input
                   disabled={monthIsLocked}
                   id="plan-amount"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   min="0"
                   name="amount"
-                  placeholder="5000.00"
+                  placeholder="5000"
                   required
-                  step="0.01"
+                  step="1"
                   type="number"
                 />
               </Field>
@@ -246,14 +240,14 @@ export function MonthlyPlanCard() {
                     sort={sort}
                   />
                   <PlanTableHead
-                    column="category"
+                    column="categoryId"
                     label="Category"
                     onSort={handleSort}
                     sort={sort}
                   />
                   <PlanTableHead
                     align="right"
-                    column="amount"
+                    column="amountCents"
                     label="Target"
                     onSort={handleSort}
                     sort={sort}
@@ -261,7 +255,7 @@ export function MonthlyPlanCard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visiblePlans.map((plan) => {
+                {plans.map((plan) => {
                   const isLocked = locks.some(
                     (lock) => lock.month === plan.month,
                   );

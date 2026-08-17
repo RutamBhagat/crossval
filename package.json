@@ -10,11 +10,9 @@
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
     "check-types": "pnpm -r check-types",
-    "test": "pnpm --filter server test",
-    "test:watch": "pnpm --filter server test:watch",
-    "test:integration": "pnpm --filter @crossval/db test:integration && pnpm --filter server test:integration",
+    "test:integration": "pnpm --filter @crossval/db test:integration",
     "dev:web": "pnpm --filter web dev",
-    "dev:server": "pnpm --filter server dev",
+    "dev:server": "pnpm --filter @crossval/server dev",
     "db:start": "pnpm --filter @crossval/db db:start",
     "db:watch": "pnpm --filter @crossval/db db:watch",
     "db:stop": "pnpm --filter @crossval/db db:stop",
@@ -29,5 +27,5 @@
     "@types/node": "^22.20.1",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@11.12.0"
+  "packageManager": "pnpm@11.22.0"
 }

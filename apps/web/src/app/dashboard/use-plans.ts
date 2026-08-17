@@ -3,66 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { api } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 
-type Plan = {
-  id: string;
-  categoryId: string;
-  month: string;
-  amountCents: number;
-};
+type PlansQuery = Parameters<typeof api.api.plans.get>[0]["query"];
 
-export type PlanSortKey = "month" | "category" | "amount";
-export type PlanSortDirection = "ascending" | "descending";
-
-type PlanInput = {
-  categoryId: string;
-  month: string;
-  amount: string;
-};
-
-async function getPlans(
-  offset: number,
-  limit: number,
-  sort: PlanSortKey,
-  direction: PlanSortDirection,
-) {
-  const query = new URLSearchParams({
-    offset: String(offset),
-    limit: String(limit),
-    sort,
-    direction,
-  });
-  const response = await fetch(
-    `/api/plans?${query}`,
-    { credentials: "include" },
-  );
-  const data = (await response.json()) as {
-    plans?: Plan[];
-    total?: number;
-    error?: string;
-  };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Plans could not be loaded");
-  }
-
-  return { plans: data.plans ?? [], total: data.total ?? 0 };
-}
-
-async function savePlan(input: PlanInput) {
-  const response = await fetch("/api/plans", {
-    method: "PUT",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  const data = (await response.json()) as { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error ?? "Plan could not be saved");
-  }
-}
+export type PlanSortKey = PlansQuery["sort"];
+export type PlanSortDirection = PlansQuery["direction"];
 
 export function usePlans(
   offset: number,
@@ -74,23 +21,18 @@ export function usePlans(
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const queryKey = ["plans", session?.user.id] as const;
+
   const plansQuery = useQuery({
     queryKey: [...queryKey, offset, limit, sort, direction],
-    queryFn: async () => {
-      try {
-        return await getPlans(offset, limit, sort, direction);
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Plans could not be loaded",
-        );
-        throw error;
-      }
-    },
+    queryFn: async () =>
+      (await api.api.plans.get({ query: { offset, limit, sort, direction } })).data,
     enabled: Boolean(session?.user.id),
     retry: false,
   });
-  const savePlanMutation = useMutation({
-    mutationFn: savePlan,
+
+  const savePlan = useMutation({
+    mutationFn: (input: Parameters<typeof api.api.plans.put>[0]) =>
+      api.api.plans.put(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
       void queryClient.invalidateQueries({
@@ -98,14 +40,13 @@ export function usePlans(
       });
       toast.success("Monthly target saved");
     },
-    onError: (error) => toast.error(error.message),
   });
 
   return {
     plans: plansQuery.data?.plans ?? [],
     total: plansQuery.data?.total ?? 0,
     isLoading: isSessionPending || plansQuery.isLoading,
-    isSaving: savePlanMutation.isPending,
-    savePlan: savePlanMutation.mutate,
+    isSaving: savePlan.isPending,
+    savePlan: savePlan.mutate,
   };
 }

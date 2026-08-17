@@ -17,3 +17,7 @@ export function getCategoryName(categoryId: string) {
 }
 
 export type CategoryId = (typeof categories)[number]["id"];
+
+export const categoryIds = categories.map(
+  (category) => category.id,
+) as [CategoryId, ...CategoryId[]];
