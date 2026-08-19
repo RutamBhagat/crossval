@@ -29,8 +29,7 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.2",
     "csv-parse": "^7.0.2",
-    "elysia": "1.4.29",
-    "exact-mirror": "0.2.7"
+    "elysia": "1.4.29"
   },
   "devDependencies": {
     "@crossval/config": "workspace:*",
