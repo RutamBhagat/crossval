@@ -24,6 +24,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @crossval/server test
       - run: pnpm --filter @crossval/server check-types
       - run: pnpm --filter @crossval/server build
 
