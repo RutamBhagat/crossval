@@ -35,7 +35,7 @@ Production stack:
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API configured by `API_UPSTREAM_URL`.
 
-Requests then reach Caddy on the `e2-1` OCI VM. Caddy strips the `/crossval` prefix and proxies to the Elysia container at `10.0.0.201:8000` on `a1`. MongoDB Atlas provides the transactions used to enforce month locks.
+Requests then reach `crossval-api.rutam.duckdns.org` on the `e2-1` OCI VM. Caddy proxies them to the Elysia container at `10.0.0.201:8000` on `a1`. MongoDB Atlas provides the transactions used to enforce month locks.
 
 ```mermaid
 flowchart TD

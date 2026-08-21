@@ -1,12 +1,5 @@
 # Reference configuration only. Crossval CI does not install this file.
-# Manually import it inside the public API site block on e2-1.
-# The parent site must use a `respond 404` fallback, not a catch-all `handle`.
 
-@crossval path /crossval/*
-
-route {
-	handle @crossval {
-		uri strip_prefix /crossval
-		reverse_proxy 10.0.0.201:8000
-	}
+crossval-api.rutam.duckdns.org {
+	reverse_proxy 10.0.0.201:8000
 }
