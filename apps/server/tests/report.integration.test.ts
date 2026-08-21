@@ -4,7 +4,6 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
-  ipLimit: vi.fn(async () => ({ success: true })),
   userLimit: vi.fn(async () => ({ success: true })),
 }));
 
@@ -14,7 +13,6 @@ vi.mock("@crossval/auth", () => ({
 
 vi.mock("../src/rate-limit.js", () => ({
   getRetryAfter: vi.fn(() => 1),
-  ipRateLimit: { limit: mocks.ipLimit },
   userRateLimit: { limit: mocks.userLimit },
 }));
 

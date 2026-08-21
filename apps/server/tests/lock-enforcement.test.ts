@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   actualConstructor: vi.fn(),
   getSession: vi.fn(),
-  ipLimit: vi.fn(),
   planSave: vi.fn(),
   runIfPeriodsOpen: vi.fn(),
   userLimit: vi.fn(),
@@ -16,7 +15,6 @@ vi.mock("@crossval/auth", () => ({
 
 vi.mock("../src/rate-limit.js", () => ({
   getRetryAfter: vi.fn(() => 1),
-  ipRateLimit: { limit: mocks.ipLimit },
   userRateLimit: { limit: mocks.userLimit },
 }));
 
@@ -52,7 +50,6 @@ describe("write boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSession.mockResolvedValue({ user: { id: "user-1" } });
-    mocks.ipLimit.mockResolvedValue({ success: true });
     mocks.userLimit.mockResolvedValue({ success: true });
     mocks.runIfPeriodsOpen.mockResolvedValue({
       ok: false,

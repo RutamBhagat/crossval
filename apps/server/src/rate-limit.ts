@@ -8,7 +8,6 @@ const redis = new Redis({
 });
 
 const USER_RATE_LIMIT_MAX = 300;
-const IP_RATE_LIMIT_MAX = 900;
 
 function createRateLimit(prefix: string, max = USER_RATE_LIMIT_MAX) {
   return new Ratelimit({
@@ -22,7 +21,6 @@ function getRetryAfter(reset: number) {
   return Math.max(1, Math.ceil((reset - Date.now()) / 1000));
 }
 
-const ipRateLimit = createRateLimit("crossval:rl:ip", IP_RATE_LIMIT_MAX);
 const userRateLimit = createRateLimit("crossval:rl:user", USER_RATE_LIMIT_MAX);
 
-export { createRateLimit, getRetryAfter, ipRateLimit, redis, userRateLimit };
+export { createRateLimit, getRetryAfter, redis, userRateLimit };

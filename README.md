@@ -29,21 +29,19 @@ Production stack:
 - Vercel: Next.js frontend
 - Oracle Cloud Infrastructure (OCI): Dockerized Elysia API on a 2-OCPU, 12 GB RAM Arm compute instance
 - MongoDB Atlas: production database
-- Upstash Redis: distributed per-IP and per-user rate-limit counters
+- Upstash Redis: distributed per-user rate-limit counters
 
 ### Deployment architecture
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API configured by `API_UPSTREAM_URL`.
 
-For `/api/*`, the Next.js proxy validates Vercel's `X-Forwarded-For` value as a single IP address. It forwards that address in `X-Crossval-Client-IP` and adds the server-only `X-Crossval-Origin-Token`.
-
-Requests then reach Caddy on the `e2-1` OCI VM. Caddy validates the origin token, replaces `X-Forwarded-For` with the validated client IP, removes internal headers, strips the `/crossval` prefix, and proxies to the Elysia container at `10.0.0.201:8000` on `a1`. The container uses host networking so Elysia sees Caddy's private IP as the TCP peer. MongoDB Atlas provides the transactions used to enforce month locks.
+Requests then reach Caddy on the `e2-1` OCI VM. Caddy strips the `/crossval` prefix and proxies to the Elysia container at `10.0.0.201:8000` on `a1`. MongoDB Atlas provides the transactions used to enforce month locks.
 
 ```mermaid
 flowchart TD
     U[Browser] --> V[Vercel frontend]
-    V -->|HTTPS 443<br/>canonical IP + origin token| C[e2-1: Caddy]
-    C -->|OCI private subnet<br/>TCP 8000<br/>sanitized X-Forwarded-For| A[a1: Docker / Elysia API]
+    V -->|HTTPS 443| C[e2-1: Caddy]
+    C -->|OCI private subnet<br/>TCP 8000| A[a1: Docker / Elysia API]
     A -->|TLS, outbound| M[MongoDB Atlas]
     A -->|HTTPS, outbound| R[Upstash Redis]
 ```
@@ -54,13 +52,9 @@ Elysia TypeBox schemas validate API request bodies, query parameters, and respon
 
 The frontend uses Eden Treaty instead of hand-written `fetch` calls. It derives request and response types from the exported Elysia `App` type, so the client stays in sync with the server routes without maintaining a second set of Zod schemas.
 
-Authenticated application routes use two Upstash Redis limits: 900 requests per minute per IPv4 address or IPv6 `/64`, then 300 requests per minute per authenticated user. The IP limit runs before session lookup. Rejected requests return HTTP status `429` with a `Retry-After` header and identify the `ip` or `user` policy.
+Authenticated application routes use one Upstash Redis limit: 300 requests per minute per authenticated user. Rejected requests return HTTP status `429` with a `Retry-After` header and identify the `user` policy. Better Auth's built-in rate limiter is disabled.
 
-Better Auth separately applies its own Redis-backed limit of 100 requests per 60 seconds to `/api/auth/*`. It trusts Caddy at `10.0.0.21` by default when resolving the forwarded client IP and explicitly groups IPv6 clients by `/64`. Sessions and verification records remain in MongoDB; Redis secondary storage is used for Better Auth rate-limit counters.
-
-The application IP limiter accepts only the single sanitized `X-Forwarded-For` value produced by the deployment path. Vercel provides the address, the Next.js proxy validates it and adds `API_ORIGIN_TOKEN`, and Caddy rewrites `X-Forwarded-For` before forwarding the request to Elysia. Invalid or missing values share one `unknown` bucket instead of becoming attacker-controlled rate-limit keys.
-
-Configure Caddy manually on `e2-1` because the VM serves other applications. Crossval CI does not install or modify its Caddy configuration. `deploy/Caddyfile.crossval` is the version-controlled reference, and `deploy/caddy.env.example` documents the server-only token. Set the same `API_ORIGIN_TOKEN` in Caddy and Vercel.
+Configure Caddy manually on `e2-1` because the VM serves other applications. Crossval CI does not install or modify its Caddy configuration. `deploy/Caddyfile.crossval` is the version-controlled reference.
 
 ### Graceful shutdown
 
@@ -119,8 +113,6 @@ Before activation, the workflow runs the Upstash Redis preflight inside the new 
 
 The container uses `--restart unless-stopped`, so Docker restarts it after process failures and Docker daemon or host restarts. It also uses `--stop-timeout 30` for graceful shutdown and `--network host` so Elysia sees Caddy's private IP as the TCP peer.
 
-Host networking is intentional. Better Auth trusts the configured `TRUSTED_PROXY_IP`, which defaults to Caddy at `10.0.0.21`. Docker bridge networking could replace that TCP peer address with a bridge or gateway address before the request reaches Elysia.
-
 After replacement, the workflow checks `/api/health` on port `8000`. If the check fails and a previous Docker image exists, it removes the failed container and starts `crossval-server:previous`. The first Docker deployment has no automatic fallback to the former non-container service.
 
 The first Docker deployment also disables and removes the old `crossval-server.service` unit so Docker becomes the only process supervisor for the API. The repository no longer installs or maintains a systemd unit for the container.
@@ -163,7 +155,7 @@ The Docker Compose MongoDB configuration is only for local development.
    http://localhost:3000/api/auth/callback/google
    ```
 
-7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN` in `apps/server/.env`. In `apps/web/.env`, keep the development `API_ORIGIN_TOKEN` from the example file or replace it with another 64-character lowercase hexadecimal value.
+7. Set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN` in `apps/server/.env`.
 8. Start MongoDB:
 
    ```bash
@@ -180,7 +172,7 @@ The Docker Compose MongoDB configuration is only for local development.
 
 Local MongoDB runs as a single-node replica set because month locking depends on MongoDB transactions. The per-user rate limiter uses the Upstash REST credentials from `apps/server/.env`.
 
-For production, set `DATABASE_URL` to the MongoDB Atlas connection string and provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. Set the same randomly generated `API_ORIGIN_TOKEN` in Vercel and the Caddy service environment. `TRUSTED_PROXY_IP` defaults to the `e2-1` private address, `10.0.0.21`.
+For production, set `DATABASE_URL` to the MongoDB Atlas connection string and provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 
 To run the MongoDB integration tests, keep MongoDB running and use:
 

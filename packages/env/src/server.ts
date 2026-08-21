@@ -1,6 +1,4 @@
 import "dotenv/config";
-import { isIP } from "node:net";
-
 import { createEnv } from "@t3-oss/env-core";
 import * as v from "valibot";
 
@@ -21,11 +19,6 @@ const NodeEnv = v.optional(
   v.picklist(["development", "production", "test"]),
   "development",
 );
-const IpAddress = v.pipe(
-  v.string(),
-  v.check((value) => isIP(value) !== 0, "Expected an IP address"),
-);
-const TrustedProxyIp = v.optional(IpAddress, "10.0.0.21");
 
 export const env = createEnv({
   server: {
@@ -39,7 +32,6 @@ export const env = createEnv({
     CORS_ORIGIN: CorsOrigin,
     PORT: Port,
     NODE_ENV: NodeEnv,
-    TRUSTED_PROXY_IP: TrustedProxyIp,
   },
   runtimeEnv: process.env,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
