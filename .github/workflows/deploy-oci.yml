@@ -30,13 +30,21 @@ jobs:
 
   deploy:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     environment: production
     env:
       OCI_HOST: a1
       OCI_USER: ${{ secrets.OCI_USER }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Build production image
+        run: |
+          docker build \
+            --file apps/server/Dockerfile \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --tag "crossval-server:${{ github.sha }}" \
+            .
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
@@ -45,9 +53,6 @@ jobs:
           audience: ${{ secrets.TS_AUDIENCE }}
           tags: tag:ci
           ping: a1
-
-      - name: Package source
-        run: git archive --format=tar.gz --output=crossval-${{ github.sha }}.tar.gz HEAD
 
       - name: Configure SSH
         run: |
@@ -58,11 +63,10 @@ jobs:
             StrictHostKeyChecking accept-new
           EOF
 
-      - name: Upload source
+      - name: Transfer production image
         run: |
-          scp \
-            "crossval-${{ github.sha }}.tar.gz" \
-            "$OCI_USER@$OCI_HOST:/tmp/crossval-${{ github.sha }}.tar.gz"
+          docker save "crossval-server:${{ github.sha }}" |
+            ssh "$OCI_USER@$OCI_HOST" 'sudo docker load'
 
       - name: Deploy release
         run: |
@@ -72,8 +76,6 @@ jobs:
 
           release_id="$1"
           root=/opt/crossval
-          release="$root/releases/$release_id"
-          archive="/tmp/crossval-$release_id.tar.gz"
           image="crossval-server:$release_id"
           current_image=crossval-server:current
           previous_image=crossval-server:previous
@@ -119,17 +121,7 @@ jobs:
             exit 1
           fi
 
-          rm -rf "$release"
-          install -d "$release"
-          tar -xzf "$archive" -C "$release"
-          rm -f "$archive"
-
-          cd "$release"
-          sudo docker build \
-            --file apps/server/Dockerfile \
-            --label "org.opencontainers.image.revision=$release_id" \
-            --tag "$image" \
-            .
+          sudo docker image inspect "$image" >/dev/null
 
           sudo docker run --rm \
             --env-file "$root/server.env" \
@@ -170,14 +162,6 @@ jobs:
                 fi
               done < <(sudo docker image ls crossval-server --format '{{.Repository}}:{{.Tag}}')
 
-              for candidate in "$root"/releases/*; do
-                [ -d "$candidate" ] || continue
-                [ "$candidate" = "$release" ] || rm -rf "$candidate"
-              done
-
-              sudo docker builder prune --force \
-                --filter "until=168h" \
-                --max-used-space 3GB >/dev/null
               exit 0
             fi
             sleep 5

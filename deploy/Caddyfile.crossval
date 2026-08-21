@@ -1,5 +1,0 @@
-# Reference configuration only. Crossval CI does not install this file.
-
-crossval-api.rutam.duckdns.org {
-	reverse_proxy 10.0.0.201:8000
-}
