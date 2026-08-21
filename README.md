@@ -27,7 +27,8 @@ Install these tools before you start:
 Production stack:
 
 - Vercel: Next.js frontend
-- Oracle Cloud Infrastructure (OCI): Dockerized Elysia API on a 2-OCPU, 12 GB RAM Arm compute instance
+- Oracle Cloud Infrastructure (OCI) Flexible Load Balancer: TLS termination, health checks, and hostname routing
+- OCI Compute: Dockerized Elysia API on a 2-OCPU, 12 GB RAM Arm instance
 - MongoDB Atlas: production database
 - Upstash Redis: distributed per-user rate-limit counters
 
@@ -35,13 +36,15 @@ Production stack:
 
 The frontend and API are separate applications. Vercel runs `apps/web` and rewrites same-origin `/api/*` requests to the OCI API configured by `API_UPSTREAM_URL`.
 
-Requests then reach `crossval-api.rutam.duckdns.org` on the `e2-1` OCI VM. Caddy proxies them to the Elysia container at `10.0.0.201:8000` on `a1`. MongoDB Atlas provides the transactions used to enforce month locks.
+Requests then reach a public OCI Flexible Load Balancer fixed at 10 Mbps, the Always Free allocation. The load balancer terminates TLS, checks `/api/health`, routes requests by hostname, and proxies Crossval traffic through the private subnet to the Elysia container at `10.0.0.201:8000` on `a1`. Other applications run on the same VM and use separate hostname routes.
+
+A load balancer is not necessary for Crossval at its current scale. I added one because OCI includes it in the Always Free tier and because I wanted practical experience with OCI load balancing, network security groups, health checks, TLS certificate rotation, and hostname routing.
 
 ```mermaid
 flowchart TD
     U[Browser] --> V[Vercel frontend]
-    V -->|HTTPS 443| C[e2-1: Caddy]
-    C -->|OCI private subnet<br/>TCP 8000| A[a1: Docker / Elysia API]
+    V -->|HTTPS 443| L[OCI Flexible Load Balancer]
+    L -->|Private subnet<br/>TCP 8000| A[a1: Docker / Elysia API]
     A -->|TLS, outbound| M[MongoDB Atlas]
     A -->|HTTPS, outbound| R[Upstash Redis]
 ```
@@ -54,7 +57,7 @@ The frontend uses Eden Treaty instead of hand-written `fetch` calls. It derives 
 
 Authenticated application routes use one Upstash Redis limit: 300 requests per minute per authenticated user. Rejected requests return HTTP status `429` with a `Retry-After` header and identify the `user` policy. Better Auth's built-in rate limiter is disabled.
 
-Configure Caddy manually on `e2-1` because the VM serves other applications. Crossval CI does not install or modify its Caddy configuration. `deploy/Caddyfile.crossval` is the version-controlled reference.
+A Let's Encrypt wildcard certificate covers the DuckDNS hostnames. `acme.sh` renews the certificate on `a1` through the DuckDNS DNS-01 provider. A least-privilege OCI instance principal imports each renewed version into OCI Certificates, and the load balancer listener references that certificate resource.
 
 ### Graceful shutdown
 
@@ -62,24 +65,17 @@ Docker manages the API container with the `unless-stopped` restart policy. When 
 
 ### Network security
 
-The deployment uses OCI security rules, UFW, private subnet routing, and Tailscale as separate controls.
+The deployment uses OCI network security groups (NSGs), UFW, private subnet routing, and Tailscale as separate controls.
 
-Rules for `e2-1`:
+| Component           | Inbound traffic allowed                    | Purpose                                      |
+| ------------------- | ------------------------------------------ | -------------------------------------------- |
+| Load balancer NSG   | TCP `80` and `443` from the internet       | HTTP and HTTPS listeners                     |
+| Backend NSG on `a1` | TCP `8000` from the load balancer NSG only | Load-balancer-to-API traffic                 |
+| UFW on `a1`         | TCP `8000` from the private subnet         | Host-level protection for API traffic        |
+| UFW on `a1`         | UDP `41641`                                | Direct Tailscale connections                 |
+| UFW on `a1`         | Traffic on `tailscale0`                    | Authenticated administration and deployment |
 
-| Inbound traffic allowed by UFW       | Purpose                                           |
-| ------------------------------------ | ------------------------------------------------- |
-| TCP `80` and `443` from the internet | HTTP redirect, TLS termination, and reverse proxy |
-| UDP `41641`                          | Direct Tailscale connections                      |
-
-Rules for `a1` and both VMs:
-
-| VM   | Inbound traffic allowed by UFW        | Purpose                                             |
-| ---- | ------------------------------------- | --------------------------------------------------- |
-| `a1` | TCP `8000` from `e2-1` at `10.0.0.21` | Caddy-to-API traffic through the OCI private subnet |
-| `a1` | UDP `41641`                           | Direct Tailscale connections                        |
-| Both | Traffic on `tailscale0`               | Authenticated administration and deployment traffic |
-
-UFW denies other inbound traffic by default. OCI security rules apply the same minimum-access model before traffic reaches each VM. SSH listens on the hosts, but the public firewall does not admit TCP `22`. Administrators connect through Tailscale instead.
+UFW denies other inbound traffic by default. OCI NSG rules restrict traffic before it reaches the VM. SSH listens on the host, but the public firewall does not admit TCP `22`. Administrators connect through Tailscale instead.
 
 The UDP `41641` rules permit direct WireGuard connections when NAT traversal succeeds. Tailscale can use a DERP relay when a direct connection is not available.
 
@@ -111,13 +107,13 @@ The workflow extracts each source archive under `/opt/crossval/releases/<commit-
 
 Before activation, the workflow runs the Upstash Redis preflight inside the new image with `/opt/crossval/server.env`. It tags the existing `crossval-server:current` image as `crossval-server:previous`, tags the new image as `crossval-server:current`, and replaces the named `crossval-server` container.
 
-The container uses `--restart unless-stopped`, so Docker restarts it after process failures and Docker daemon or host restarts. It also uses `--stop-timeout 30` for graceful shutdown and `--network host` so Elysia sees Caddy's private IP as the TCP peer.
+The container uses `--restart unless-stopped`, so Docker restarts it after process failures and Docker daemon or host restarts. It also uses `--stop-timeout 30` for graceful shutdown and `--network host` so Elysia sees the load balancer's private IP as the TCP peer.
 
 After replacement, the workflow checks `/api/health` on port `8000`. If the check fails and a previous Docker image exists, it removes the failed container and starts `crossval-server:previous`. The first Docker deployment has no automatic fallback to the former non-container service.
 
 The first Docker deployment also disables and removes the old `crossval-server.service` unit so Docker becomes the only process supervisor for the API. The repository no longer installs or maintains a systemd unit for the container.
 
-After a successful deployment, the workflow removes stale source releases and old `crossval-server:<commit-sha>` image tags while retaining the current and previous image revisions. It also prunes build cache that has not been used for seven days and limits retained build cache to 3 GB. The public request path and private deployment path remain independent, so Caddy can continue serving the active container while GitHub Actions uploads and builds the next revision through Tailscale.
+After a successful deployment, the workflow removes stale source releases and old `crossval-server:<commit-sha>` image tags while retaining the current and previous image revisions. It also prunes build cache that has not been used for seven days and limits retained build cache to 3 GB. The public request path and private deployment path remain independent, so the load balancer can continue serving the active container while GitHub Actions uploads and builds the next revision through Tailscale.
 
 The Docker Compose MongoDB configuration is only for local development.
 
